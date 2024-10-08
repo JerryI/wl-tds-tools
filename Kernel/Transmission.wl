@@ -104,9 +104,9 @@ TransmissionObject[a_Association][prop_String] := If[!KeyExistsQ[a, prop],
 
 TransmissionObject[a_Association]["Transmission"] := QuantityArray[Transpose[{Normal @ a["Frequencies"], (*SpB[*)Power[(a["Gain"] Normal @ a["T"])(*|*),(*|*)2](*]SpB*)}], {1/"Centimeters", 1}]
 
-TransmissionObject /: Append[TransmissionObject[a_Association], props_Association] := TransmissionObject[Join[a, props]]
-TransmissionObject /: Append[TransmissionObject[a_Association], prop_Rule] := TransmissionObject[Append[a, prop]]
-TransmissionObject /: Append[TransmissionObject[a_Association], props_List] := TransmissionObject[Append[a, props]]
+TransmissionObject /: Append[TransmissionObject[a_Association], props_Association] := TransmissionObject[Join[a, props] ]
+TransmissionObject /: Append[TransmissionObject[a_Association], prop_Rule] := TransmissionObject[Append[a, prop] ]
+TransmissionObject /: Append[TransmissionObject[a_Association], props_List] := TransmissionObject[Append[a, props] ]
 
 TransmissionObject[a_Association]["Frequencies"] := QuantityArray[Normal @ a["Frequencies"], 1/"Centimeters"]
 
@@ -147,10 +147,27 @@ phaseState[phase_List] := With[{},
   ]
 ]
 
+TransmissionObject /: Keys[t_TransmissionObject] :=  t["Properties"]
+
 TransmissionObject[a_Association]["Properties"] := Join[Options[TransmissionObject][[All,1]], {"Properties", "Frequencies", "Transmission", "Phase", "\[Delta]t", "Gain", "PhaseShift", "Thickness", "Domain", "FrequencyDomainConfidenceInterval", "FDCI", "FDCI2", "FrequencyDomainConfidenceInterval2"}]
 
 Options[TransmissionObject] = {"Thickness"->Null, "Tags"-><||>, "Gain"->1.0, "PhaseShift"->0};
 
+TransmissionObject::invalidopts = "Invalid options provided"
+
+Options[validateOptions] = Options[TransmissionObject] 
+validateOptions[OptionsPattern[] ] := With[{},
+  If[Or[
+    !QuantityQ[OptionValue["Thickness"] ], 
+    !NumericQ[OptionValue["Gain"] ],
+    !NumericQ[OptionValue["PhaseShift"] ]
+  ], 
+    Message[TransmissionObject::invalidopts];
+    $Failed &
+  ,
+    Identity
+  ]
+]
 
 TransmissionUnwrap[t: TransmissionObject[a_], "Basic", OptionsPattern[]] := With[{
   offset = 2 Pi (1/33.356) QuantityMagnitude[t["\[Delta]t"], "Picoseconds"] ,
@@ -158,6 +175,11 @@ TransmissionUnwrap[t: TransmissionObject[a_], "Basic", OptionsPattern[]] := With
   freqs = Normal[a["Frequencies"]],
   phaseShift = OptionValue["PhaseShift"]
 },
+  If[!NumericQ[OptionValue["PhaseThreshold"] ] || !NumericQ[OptionValue["PhaseShift"] ],
+    Message[TransmissionObject::invalidopts];
+    Return[$Failed];
+  ];
+
   With[{unwrapped = With[{
     phase = Normal[a["Phase"]]
   },

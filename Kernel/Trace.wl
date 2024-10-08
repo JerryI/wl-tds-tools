@@ -90,12 +90,7 @@ Options[TDTrace] = {"Units"->Quantity[1, "Picoseconds"], "Gain"->1.0, "Offset"->
 
 Options[tdValid] = Options[TDTrace];
 
-
-
-
-
-
-
+TDTrace /: Keys[t_TDTrace] :=  t["Properties"]
 
 End[]
 EndPackage[]

@@ -77,7 +77,7 @@ tds = {
     ...
 };
 
-tds = TDTrace[QuantityArray[tds, {"Picoseconds", "NanoAmperes"}]]
+tds = TDTrace[QuantityArray[tds, {"Picoseconds", 1}]]
 ```
 
 #### Properties
