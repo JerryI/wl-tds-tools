@@ -3,6 +3,8 @@ A small library for high-precision material parameter extraction from time-domai
 
 *Developed at Augsburg University, Germany*
 
+<h4>Beta-testing </h4>
+
 <h3>Processed <span style="color:white; background:teal; border-radius:8px; padding:0 0.5rem 0 0.5rem;">3411</span> THz spectra from 2021 to 2024</h3>
 
 Acquired using TDS-THz 200ps Spectrometer *Toptica TeraFlash*.
@@ -12,13 +14,34 @@ Acquired using TDS-THz 200ps Spectrometer *Toptica TeraFlash*.
 - Informed phase unwrapping
 - High precision for $n$, $\kappa$, and $\alpha$ solving
 - Works for both thin and thick samples
-- ~~GPU Acceleration~~ (work in progress)
+- ~~GPU Acceleration~~ (OpenCL)
 - Functional approach, no hidden state
 - Syntax sugar with data preview
 - Jitter-proof
 
+#### Notes on GPU Acceleration
+Test were performed on Mac Air M1 (2021)
+- single spectrum wall-time
+```
+GPU: 0.03 sec
+CPU: 0.53 sec
+```
+
+- 64 spectra wall-time
+```
+GPU: 4.69 sec
+CPU: 35.5 sec
+```
+
+- 256 spectra wall-time
+```
+GPU: 15.3 sec
+CPU: n/A sec
+```
+
 ## See it in action!
 [An online example](./Examples/Basic.html) on how to work with it.
+
 
 ## Showcase for different samples
 
@@ -178,12 +201,15 @@ MaterialParameters[{t__TransmissionObject}, opts___] _List
 ```
 
 #### Options
-- `"Target"` : specifies the target device to be used `"CPU"` or `"GPU"`. By the default is `"CPU"`
+- `"Target"` : specifies the target device to be used `"CPU"` or `"GPU"` (OpenCL). By the default is `"CPU"`
 - `"SolveNKEquations"` : enables high-persicision $n$ and $\kappa$ extraction (by solving iteratively equations compling them with transmission and phase). The default value is `True`.
 - `"NKCycles"` : number of interations for solving nk-equations. The default is `30`.
 - `"MovingAverageFilter"` : enables moving average filter (kernel is 2). By the default is `True`.
 - `"FabryPerotCancellation"` : enables deconvolution procedure asumming a normal incidence and a perfect slab-like sample. By the default is `True`. DOI: 10.1117/12.612946 
 - `"FabryPerotCycles"` : number of iterations for deconvolution procedure. The default is `8`.
+
+#### Notes on GPU target
+It uses OpenCL API to work with GPU devices and picks up the fastest available. If the device does not support OpenCL (or problems with drivers), library will fall back to CPU target.
 
 #### Properties
 All properties are *read-only*.
@@ -191,11 +217,16 @@ All properties are *read-only*.
 ---
 - `"Frequencies"` : returns `QuantityArray` of frequencies
 - `"Transmission"` : returns `QuantityArray` of a power transmission. If `FabryPerotCancellation` is applied, it will return deconvoluted spectrum. 
+- `"Best Transmission"` : returns `"Transmission"` selected in the region of `"FDCI"`
 - `"Phase"` : returns `QuantityArray` of the phase of the transmissino function. 
+- `"Best Phase"` : returns `"Phase"` selected in the region of `"FDCI"`
 ---
 - `"\[Alpha]"` : returns `QuantityArray` of extracted absorption coefficient.
 - `"n"` : returns extracted real part of refractive index as `QuantityArray`.
 - `"k"` : returns extracted imaginary part of refractive index as `QuantityArray`.
+- `"Best \[Alpha]"` : returns `"\[Alpha]"` in the region of `"FDCI"`.
+- `"Best n"` : returns `"n"` in the region of `"FDCI"`.
+- `"Best k"` : returns `"k"` in the region of `"FDCI"`.
 ---
 - `"Thickness"` : returns the thickness of the material
 - `"Gain"` : returns gain of the sample signal (or an amplitude transmission function).
@@ -245,7 +276,16 @@ The processed data will look like
 
 ![](./imgs/deconv.png)
 
+#### Bath processing (GPU only)
+If you vary the parameters of the same `TransmissionObject` to avoid extra transactions to GPU, one can use provide the set as a list to `MaterialParameters` contructor
 
+```mathematica
+MaterialParameters[map[[All,3]], "Target"->"GPU"]
+```
+
+this function will group them by `Phase` arrays (comparison by the internal reference will be used, no actual evaluation) and then feed to GPU with shared initial data.
+
+This also takes advantage of non-blocking execution model of OpenCL and loads all data at once.
 
 
 ## Acknowledgments

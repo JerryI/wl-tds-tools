@@ -30,9 +30,11 @@ root = DirectoryName[$InputFileName];
 } = Get[ FileNameJoin[{root, "nGPU.wl"}] ];
 
 Options[MaterialParameters] = {"Target"->"CPU", "Tags"-><||>, "Model"->"Slab", "SolveNKEquations"->True, "MovingAverageFilter"->True, "FabryPerotCancellation"->True, "FabryPerotCycles"->8, "NKCycles"->30};
-Options[materialParameters] = Options[MaterialParameters];
+Options[materialParameters] = Join[Options[MaterialParameters], {"sharedSrcQ" -> False, "sharedSrc"->Null}];
 
-MaterialParameters[t_TransmissionObject, opts:OptionsPattern[]] := validateOptions[opts] @  materialParameters[t, OptionValue["Model"], OptionValue["Target"], opts]
+MaterialParameters[t_TransmissionObject, opts:OptionsPattern[]] := validateOptions[opts] @  With[{r = materialParameters[t, OptionValue["Model"], OptionValue["Target"], opts]},
+  If[Head[r] === Hold, ReleaseHold[r], r]
+]
 
 MaterialParameters[t:List[__TransmissionObject], opts:OptionsPattern[]] := validateOptions[opts] @  materialParameters[t, OptionValue["Model"], OptionValue["Target"], opts]
 
@@ -51,7 +53,7 @@ MaterialParameters[n_Association][s_String] := If[!KeyExistsQ[n, s],
 MaterialParameters /: Keys[t_MaterialParameters] :=  t["Properties"]
 
 
-MaterialParameters[n_Association]["Properties"] := {"Domain", "Transmission", "\[Alpha]", "Frequencies", "n", "k", "Properties", "Thickness", "Tags", "Gain", "PhaseShift", "Phase", "FrequencyDomainConfidenceInterval", "FDCI", "FDCI2", "FrequencyDomainConfidenceInterval2", "FPReduction"}
+MaterialParameters[n_Association]["Properties"] := {"Domain", "Best Transmission", "Transmission", "\[Alpha]", "Best \[Alpha]", "Frequencies", "Best n", "n", "Best k", "k", "Properties", "Thickness", "Tags", "Gain", "PhaseShift", "Phase", "FrequencyDomainConfidenceInterval", "FDCI", "FDCI2", "FrequencyDomainConfidenceInterval2", "FPReduction"}
 
 MaterialParameters[n_Association]["FrequencyDomainConfidenceInterval"] := MaterialParameters[n]["FDCI"]
 
@@ -61,8 +63,24 @@ MaterialParameters[n_Association]["Transmission"] := QuantityArray[Transpose[{n[
 
 MaterialParameters[n_Association]["Phase"] := QuantityArray[Transpose[{n["Frequencies"] // Normal, Normal[n["Phase"]]}], {1/"Centimeters", 1}]
 
+
+MaterialParameters[n_Association]["Best Transmission"] := SelectBestRange[n] @ QuantityArray[Transpose[{n["Frequencies"] // Normal, Normal[n["T"]]^2}], {1/"Centimeters", 1}]
+
+MaterialParameters[n_Association]["Best Phase"] := SelectBestRange[n] @ QuantityArray[Transpose[{n["Frequencies"] // Normal, Normal[n["Phase"]]}], {1/"Centimeters", 1}]
+
+
 MaterialParameters[n_Association]["n"] := QuantityArray[Transpose[{n["Frequencies"] // Normal, n["n"] // Normal}], {1/"Centimeters", 1}]
 MaterialParameters[n_Association]["k"] := QuantityArray[Transpose[{n["Frequencies"] // Normal, n["k"] // Normal}], {1/"Centimeters", 1}]
+
+SelectBestRange[n_][list_] := With[{ranges = findFDCIRanges[MaterialParameters[n] ]},
+  list[[ranges[[1]] ;; ranges[[2]] ]]
+]
+
+MaterialParameters[n_Association]["Best n"] := SelectBestRange[n] @ QuantityArray[Transpose[{n["Frequencies"] // Normal, n["n"] // Normal}], {1/"Centimeters", 1}]
+MaterialParameters[n_Association]["Best k"] := SelectBestRange[n] @ QuantityArray[Transpose[{n["Frequencies"] // Normal, n["k"] // Normal}], {1/"Centimeters", 1}]
+
+MaterialParameters[n_Association]["Best \[Alpha]"] := SelectBestRange[n] @ QuantityArray[{#[[1]], (#[[2]] 4 \[Pi]  10^12 #[[1]])/(33.356 2.9979 10^10)} &/@ Transpose[{n["Frequencies"] // Normal, n["k"] // Normal}], {1/"Centimeters", 1/"Centimeters"}]
+
 
 MaterialParameters[n_Association]["\[Alpha]"] := QuantityArray[{#[[1]], (#[[2]] 4 \[Pi]  10^12 #[[1]])/(33.356 2.9979 10^10)} &/@ Transpose[{n["Frequencies"] // Normal, n["k"] // Normal}], {1/"Centimeters", 1/"Centimeters"}]
 
@@ -211,19 +229,46 @@ validateOptions[OptionsPattern[] ] := With[{},
 ]
 
 materialParameters[t_List, type_, "CPU", opts: OptionsPattern[]] := materialParameters[#, type, "CPU", opts] &/@ t
-materialParameters[t_List, type_, "GPU", opts: OptionsPattern[]] := With[{},
-
-]
+materialParameters[t_List, type_, "GPU", opts: OptionsPattern[]] := materialParameters[t, type, "GPU", opts]
 
 MaterialParameters::badgpu = "GPU acceleration is not available. Reason: ``";
 
-clPipe = 
-materialParameters[t:TransmissionObject[a_], "Slab", "GPU", opts: OptionsPattern[]] := With[{},
+materialParameters[t:TransmissionObject[a_], "Slab", "GPU", opts: OptionsPattern[] ] := With[{},
   If[!OpenCLQ[], 
     Message[MaterialParameters::badgpu, "OpenCLQ[] returned False. Fallback to CPU"];
     materialParameters[t, "Slab", "CPU", opts]
   ,
-    materialParameters[t, "Slab", "GPU", opts]
+    materialParameters[t, "Slab", "GPU", opts] // ReleaseHold
+  ]
+]
+
+materialParameters[l: List[__TransmissionObject], "Slab", "GPU", opts: OptionsPattern[] ] := Module[{dump = {}},
+  If[!OpenCLQ[], 
+    Message[MaterialParameters::badgpu, "OpenCLQ[] returned False. Fallback to CPU"];
+    materialParameters[#, "Slab", "CPU", opts] &/@ l
+  ,
+    (* Group them by Phase (to avoid copying) *)
+    With[{groups = SplitBy[l, Function[item,
+      item[[1]]["Phase"]
+    ] ]},
+      With[{ results = Flatten[Map[Function[group,
+        With[{ (* take the first one only, cuz it will be the same for the rest *)
+          src = OpenCLMemoryLoad[Transpose[{Normal[group[[1,1, "Frequencies"]] ], Normal[group[[1, 1, "T"]] ], Normal[group[[1, 1,"Phase"]] ]}] // Flatten, "Float"]
+        },
+          AppendTo[dump, src];
+          materialParameters[#, "Slab", "GPU", opts, "sharedSrcQ"->True, "sharedSrc"->src] &/@ group
+        ]
+      ], groups], 1]},
+
+        With[{computed = ReleaseHold /@ results},
+          OpenCLMemoryUnload /@ dump;
+          ClearAll[dump];
+
+          computed
+        ]
+
+      ]
+    ]
   ]
 ]
 
@@ -246,13 +291,13 @@ materialParameters[TransmissionObject[a_], "Slab", "CPU", opts: OptionsPattern[]
 
     dest = initialize[src, meta];
     dest = solveNK[src, dest, meta, If[!OptionValue["SolveNKEquations"], 0, OptionValue["NKCycles"]]];
-    dest = movingAverage[src, dest, meta];
+    If[OptionValue["MovingAverageFilter"], dest = movingAverage[src, dest, meta] ];
     dest = saveForDebug[dest, meta];
     
     Do[
       dest = solveFP[src, dest, meta, 0]; 
       dest = solveNK[src, dest, meta, If[!OptionValue["SolveNKEquations"], 0, OptionValue["NKCycles"]]];
-      dest = movingAverage[src, dest, meta]; 
+      If[OptionValue["MovingAverageFilter"], dest = movingAverage[src, dest, meta] ];
     , {fpIterations}];
 
     dest = Partition[dest,5] // Transpose;
@@ -283,51 +328,74 @@ materialParameters[TransmissionObject[a_], "Slab", "GPU", opts: OptionsPattern[]
  fpIterations = If[OptionValue["FabryPerotCancellation"] === True, 
    OptionValue["FabryPerotCycles"],
    0
- ]
+ ],
+ sharedSrcQ = OptionValue["sharedSrcQ"],
+ sharedSrc  = OptionValue["sharedSrc"]
 },
 
   With[{
-    src = OpenCLMemoryLoad[Transpose[{freqs, Normal[a["T"] ], Normal[a["Phase"] ]}] // Flatten, "Float"]
+    src = If[sharedSrcQ,
+        sharedSrc
+      , 
+        OpenCLMemoryLoad[Transpose[{freqs, Normal[a["T"] ], Normal[a["Phase"] ]}] // Flatten, "Float"]
+    ],
+    size = Length[freqs]
   },
     dest = OpenCLMemoryLoad[Table[0., {Length[freqs] 5 }], "Float"];
     (* dest = Transpose[{Array[0.0&, Length[freqs]], Array[0.0&, Length[freqs]]}] // Flatten; *)
     
-    meta = {\[Delta]t, thickness, 1.0 a["Gain"], 2Pi Round[a["PhaseShift"]] // N, Length[freqs]};
+    meta = {\[Delta]t, thickness, 1.0 a["Gain"], 2Pi Round[a["PhaseShift"] ] , size} // N;
 
-    clinitialize[dest, src, meta];
-    (*clsolveNK[src, dest, meta, If[!OptionValue["SolveNKEquations"], 0, OptionValue["NKCycles"] ] ];
-    clmovingAverage[dest, meta];
-    clsaveForDebug[dest, meta];
+    clinitialize[dest, src, meta, size];
+    clsolveNK[dest, src, meta, If[!OptionValue["SolveNKEquations"], 0, OptionValue["NKCycles"] ] // Round , size];
+    If[OptionValue["MovingAverageFilter"], clmovingAverage[dest, meta, size] ];
+    clsaveForDebug[dest, meta, size];
+
     
     Do[
-      clsolveFP[src, dest, meta, 0]; 
-      clsolveNK[src, dest, meta, If[!OptionValue["SolveNKEquations"], 0, OptionValue["NKCycles"] ] ];
-      clmovingAverage[dest, meta]; 
-    , {fpIterations}];*)
+      clsolveFP[dest, src, meta, 0, size]; 
+      clsolveNK[dest, src, meta, If[!OptionValue["SolveNKEquations"], 0, OptionValue["NKCycles"] ] // Round , size];
+      If[OptionValue["MovingAverageFilter"], clmovingAverage[dest, meta, size] ];
+    , {fpIterations}];
 
-    dest = With[{res = Partition[dest // OpenCLMemoryGet, 5] // Transpose},
-      OpenCLMemoryUnload[dest];
-      OpenCLMemoryUnload[src];
-      res
-    ];
+    With[{
+      dest = dest,
+      src = src,
+      meta = meta,
+      afreqs = a["Frequencies"],
+      thickness = a["Thickness"],
+      gain = a["Gain"],
+      fdci = a["FDCI"],
+      shift = a["PhaseShift"],
+      tags = Join[a["Tags"], OptionValue["Tags"] ]
+    },
+      Hold[
+        With[{result = With[{res = Partition[dest // OpenCLMemoryGet, 5] // Transpose},
+          OpenCLMemoryUnload[dest];
+          If[!sharedSrcQ, OpenCLMemoryUnload[src] ];
+          res
+        ]},
 
-    MaterialParameters[<|
-      "n0" -> 1.0 + (0.029979 meta[[1]] / meta[[2]]),
-      "n" -> NumericArray[dest[[1]]],
-      "k" -> NumericArray[dest[[2]]],
-      "T" -> NumericArray[dest[[3]]],
-      "k debug" -> NumericArray[dest[[5]]],
-      "Phase" -> NumericArray[dest[[4]]],
-      "Frequencies" -> NumericArray[a["Frequencies"]],
-      "Thickness" -> a["Thickness"],
-      "Gain" -> a["Gain"],
-      "FDCI" -> a["FDCI"],
-      "PhaseShift" -> a["PhaseShift"],
-      "Date" -> Now,
-      "Tags" -> Join[a["Tags"], OptionValue["Tags"]]
-    |>]
+          MaterialParameters[<|
+            "n0" -> 1.0 + (0.029979 meta[[1]] / meta[[2]]),
+            "n" -> NumericArray[result[[1]]],
+            "k" -> NumericArray[result[[2]]],
+            "T" -> NumericArray[result[[3]]],
+            "k debug" -> NumericArray[result[[5]]],
+            "Phase" -> NumericArray[result[[4]]],
+            "Frequencies" -> afreqs,
+            "Thickness" -> thickness,
+            "Gain" -> gain,
+            "FDCI" -> fdci,
+            "PhaseShift" -> shift,
+            "Date" -> Now,
+            "Tags" -> tags
+          |>]
+        ]
+      ] (* hold the calculations to que up other requests *)
+    ]
   ]
-]]
+] ]
 
 findFDCIRanges[mFp_MaterialParameters] := 
   With[{m = mFp["Frequencies"] // QuantityMagnitude}, 
