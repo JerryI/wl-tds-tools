@@ -52,6 +52,7 @@ TransmissionObject[sam_TDTrace, ref_TDTrace, opts: OptionsPattern[]] := Module[{
           "Thickness"->Quantity[thickness, "Centimeters"],
           "Gain"->gain,
           "FDCI"->sam["FDCI"],
+          "Size" -> Length[freqs],
           "PhaseShift"->0,
           "Date" ->Now,
           "Tags" -> OptionValue["Tags"],

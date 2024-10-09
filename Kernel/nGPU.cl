@@ -1,94 +1,127 @@
-__kernel void initialize( //rough approximation of n,k using transmission data
-  __global float *dest, 
-  __global float *src, 
-  __global float *meta
-) {
-    unsigned int work_item_id = get_global_id(0);
+#define GROUPSIZE 256
 
-    if (work_item_id >= (int)meta[4]) return;
-
-    const float ft = 1.0f / meta[1]; //1/thickness in (cm-1)
-    
-    if (work_item_id < 2) { //low-freq cutoff
-        const float n0 = 1.0f + (0.029979f*meta[0] / meta[1]);
-
-        dest[5*work_item_id] = n0;
-        dest[5*work_item_id + 1] = 0.0f;
-        dest[5*work_item_id + 2] = src[3*work_item_id+1];
-        dest[5*work_item_id + 3] = src[3*work_item_id+2];
-        dest[5*work_item_id + 4] = 0.0f;
-
-        return;
-    } 
-
-    const float t = src[3*work_item_id + 1]; //amplitude
-    const float p = src[3*work_item_id + 2]; //phase
-    const float f = src[3*work_item_id]; //freqs
-
-    dest[5*work_item_id] = 1.0f + 0.159152f * (p + meta[3]) * ft / f; //n
-    dest[5*work_item_id + 1] = - 0.159152f * log(t * meta[2]) * ft / f; //kappa (k)
-    dest[5*work_item_id + 2] = t; //amplitude of transmission
-    dest[5*work_item_id + 3] = p; //phase
-    dest[5*work_item_id + 4] = 0.0f; //save for later
-}
-
-__kernel void solveNK( //high-persision n and k values extraction
+void __attribute__((always_inline)) solveNK( //high-persision n and k values extraction
   __global float *dest, 
   __global float *src, 
   __global float *meta,
+  mint size,
   mint iterations
 ) {
-    unsigned int work_item_id = get_global_id(0);
+    int group_id = get_local_id(0);
+    int cycles = (int)ceil(((float)size)/((float)GROUPSIZE));
 
-    if (work_item_id >= (int)meta[4]) return; //ensure the to work within bonds
+    for (int k=0; k<cycles; ++k) {
+        const int work_item_id = group_id + GROUPSIZE * k;
+        if (work_item_id >= size) continue;
 
-    const float ft = 1.0f / meta[1]; // 1/thickness (in cm-1)
+        const float ft = 1.0f / meta[1]; // 1/thickness (in cm-1)
 
-    const float logT = log(dest[5*work_item_id + 2] * meta[2]); //amplitude
-    const float ph = dest[5*work_item_id + 3] + meta[3]; //phase
-    const float freq = src[3*work_item_id]; //freqs
+        const float logT = log(dest[5*work_item_id + 2] * meta[2]); //amplitude
+        const float ph = dest[5*work_item_id + 3] + meta[3]; //phase
+        const float freq = src[3*work_item_id]; //freqs
 
-    const float fT = ft / freq;
+        const float fT = ft / freq;
 
-    const float n0 = 1.0f + (0.029979f*meta[0]*ft); //DC limit for n
-    
-    float np = dest[5*work_item_id]; //current n value
-    float kp = dest[5*work_item_id + 1]; //current k value
-    float n=np;
-    float k=kp; 
-    float modulus, arg, denominator, n2, re, im;
+        const float n0 = 1.0f + (0.029979f*meta[0]*ft); //DC limit for n
 
-    for(int j = 0; j < iterations; j++) {
-        n2 = 1.0f + np;
-        n2 = n2 * n2;
+        float np = dest[5*work_item_id]; //current n value
+        float kp = dest[5*work_item_id + 1]; //current k value
+        float n=np;
+        float k=kp; 
+        float modulus, arg, denominator, n2, re, im;
 
-        denominator = 1.0f / (kp * kp + n2);
-        denominator = denominator * denominator;
+        for(int j = 0; j < iterations; j++) {
+            n2 = 1.0f + np;
+            n2 = n2 * n2;
 
-        re = denominator * (np * n2 + kp * kp * (2.0f + np));
-        im = denominator * (kp * (kp * kp + np * np - 1.0f));
+            denominator = 1.0f / (kp * kp + n2);
+            denominator = denominator * denominator;
 
-        modulus = sqrt(re * re + im * im);
-        arg = atan2(im, re);  // Equivalent to Arg[I im + re]
+            re = denominator * (np * n2 + kp * kp * (2.0f + np));
+            im = denominator * (kp * (kp * kp + np * np - 1.0f));
 
-        n = 1.0f + 0.159152f * fT * (ph - arg);
-        k = -0.159152f * fT * (logT - log(4.0f * modulus));
-        //n = 1.0f + 0.159152f * fT * (ph - arg);
-        //k = -0.159152f * fT * (logT - log(4.0f * modulus));
+            modulus = sqrt(re * re + im * im);
+            arg = atan2(im, re);  // Equivalent to Arg[I im + re]
 
-        np = n;
-        kp = k;
+            n = 1.0f + 0.159152f * fT * (ph - arg);
+            k = -0.159152f * fT * (logT - log(4.0f * modulus));
+            //n = 1.0f + 0.159152f * fT * (ph - arg);
+            //k = -0.159152f * fT * (logT - log(4.0f * modulus));
+
+            np = n;
+            kp = k;
+        }
+
+        // Validity check for n and k
+        if (isnan(k) || isnan(n) || n < 1.0f) {
+            k = 0.0f;
+            n = n0;
+        }
+
+        dest[5*work_item_id] = n; //update n
+        dest[5*work_item_id + 1] = k; //update k
+
     }
-
-    // Validity check for n and k
-    if (isnan(k) || isnan(n) || n < 1.0f) {
-        k = 0.0f;
-        n = n0;
-    }
-
-    dest[5*work_item_id] = n; //update n
-    dest[5*work_item_id + 1] = k; //update k
 }
+
+void __attribute__((always_inline)) initialize( //rough approximation of n,k using transmission data
+  __global float *dest, 
+  __global float *src, 
+  __global float *meta,
+  mint    size
+) {
+    int group_id = get_local_id(0);
+    int cycles = (int)ceil(((float)size)/((float)GROUPSIZE));
+
+    const float ft = 1.0f / meta[1]; // 1/thickness in (cm-1)
+    
+    for (int j=0; j<cycles; ++j) {
+        const int work_item_id = group_id + GROUPSIZE * j;
+        if (work_item_id >= size) continue;
+
+        if (work_item_id < 2) { // low-freq cutoff
+            const float n0 = 1.0f + (0.029979f*meta[0] / meta[1]);
+
+            dest[5*work_item_id] = n0;
+            dest[5*work_item_id + 1] = 0.0f;
+            dest[5*work_item_id + 2] = src[3*work_item_id+1];
+            dest[5*work_item_id + 3] = src[3*work_item_id+2];
+            dest[5*work_item_id + 4] = 0.0f;
+
+            return;
+        } 
+
+        const float t = src[3*work_item_id + 1]; //amplitude
+        const float p = src[3*work_item_id + 2]; //phase
+        const float f = src[3*work_item_id]; //freqs
+
+        dest[5*work_item_id] = 1.0f + 0.159152f * (p + meta[3]) * ft / f; //n
+        dest[5*work_item_id + 1] = - 0.159152f * log(t * meta[2]) * ft / f; //kappa (k)
+        dest[5*work_item_id + 2] = t; //amplitude of transmission
+        dest[5*work_item_id + 3] = p; //phase
+        dest[5*work_item_id + 4] = 0.0f; //save for later
+    }
+}
+
+__kernel void clRun(
+  __global float *dest, 
+  __global float *src, 
+  __global float *meta,
+  mint itemSize,
+  mint groupSize,
+  mint iterationsNK,
+  mint movAvg,
+  mint iterationsFP
+) {
+    int sid = get_group_id(0);
+
+    __global float *localDest = &dest[sid * (itemSize * 5)];
+    __global float *localMeta = &meta[sid * 5];
+
+    initialize(localDest, src, localMeta, itemSize);
+    solveNK(localDest, src, localMeta, itemSize, iterationsNK);
+}
+
 
 
 __kernel void movingAverage(__global float *data, __global float *meta) { //Average n and k-values
