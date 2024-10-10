@@ -23,20 +23,14 @@ Acquired using TDS-THz 200ps Spectrometer *Toptica TeraFlash*.
 Test were performed on Mac Air M1 (2021)
 - single spectrum wall-time
 ```
-GPU: 0.03 sec
-CPU: 0.53 sec
+GPU: 0.01 sec
+CPU: 0.46 sec
 ```
 
-- 64 spectra wall-time
+- 286 spectra wall-time
 ```
-GPU: 4.69 sec
-CPU: 35.5 sec
-```
-
-- 256 spectra wall-time
-```
-GPU: 15.3 sec
-CPU: n/A sec
+GPU: 297.3 sec
+CPU: 12.1 sec
 ```
 
 ## See it in action!

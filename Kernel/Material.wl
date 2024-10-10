@@ -212,7 +212,7 @@ Options[validateOptions] = Options[MaterialParameters]
 validateOptions[OptionsPattern[] ] := With[{},
   If[Or[
     !BooleanQ[OptionValue["SolveNKEquations"] ], 
-    !BooleanQ[OptionValue["MovingAverageFilter"] ],
+    (!BooleanQ[OptionValue["MovingAverageFilter"] ] && !IntegerQ[OptionValue["MovingAverageFilter"] ]),
     !BooleanQ[OptionValue["FabryPerotCancellation"] ],
     !NumericQ[OptionValue["FabryPerotCycles"] ],
     !NumericQ[OptionValue["NKCycles"] ]
