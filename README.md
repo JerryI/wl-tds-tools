@@ -1,49 +1,31 @@
-# Time-Domain Spectroscopy Tools
-A small library for high-precision material parameter extraction from time-domain THz signals, written in Wolfram Language.
+# Time-Domain Spectroscopy Tools 🧰
+A small library for high-precision material parameter extraction from time-domain THz signals, written in Wolfram Language 🐺 and OpenCL 🏎️
 
-*Developed at Augsburg University, Germany*
+*Developed at Augsburg University, Germany 🇩🇪*
 
-<h4>Beta-testing </h4>
+<h4>Beta testing ♲</h4> 
 
-<h3>Processed <span style="color:white; background:teal; border-radius:8px; padding:0 0.5rem 0 0.5rem;">3411</span> THz spectra from 2021 to 2024</h3>
+> <h4>Processed <span style="color:white; background:teal; border-radius:8px; padding:0 0.5rem 0 0.5rem;">3411</span> THz spectra from 2021 to 2024</h4>
 
-Acquired using TDS-THz 200ps Spectrometer *Toptica TeraFlash*.
+> acquired using TDS-THz 200ps Spectrometer *Toptica TeraFlash* 📸
 
 ## Features
-- Fabry-Pérot deconvolution
+- Fabry-Pérot deconvolution ⭐️
 - Informed phase unwrapping
 - High precision for $n$, $\kappa$, and $\alpha$ solving
 - Works for both thin and thick samples
-- ~~GPU Acceleration~~ (OpenCL)
+- **GPU Acceleration** (OpenCL) ⭐️
 - Functional approach, no hidden state
-- Syntax sugar with data preview
+- Syntax sugar with data preview ⭐️
 - Jitter-proof
 
-#### Notes on GPU Acceleration
-Test were performed on Mac Air M1 (2021)
-- single spectrum wall-time
-```
-GPU: 0.03 sec
-CPU: 0.53 sec
-```
 
-- 64 spectra wall-time
-```
-GPU: 4.69 sec
-CPU: 35.5 sec
-```
 
-- 256 spectra wall-time
-```
-GPU: 15.3 sec
-CPU: n/A sec
-```
-
-## See it in action!
+## See it in action! ⏱️
 [An online example](./Examples/Basic.html) on how to work with it.
 
 
-## Showcase for different samples
+## Examples of processed TDS
 
 GaGe 0.4mm semiconductor
 
@@ -55,11 +37,13 @@ Fe2Mo3O8 0.4mm dielectric
 
 
 
-## Supported configurations
+## Supported configurations 📸
 - [x] Transmission
 - [ ] Reflectivity
 
-## Installation
+
+
+## Installation 
 ### Option 1
 Install locally using [LPM](https://github.com/JerryI/wl-localpackages)
 
@@ -75,7 +59,7 @@ Clone this repository into your project folder and run:
     PacletDirectoryLoad["wl-tds-tools"]
 ```
 
-## Library Interface
+## Library Interface 
 
 We separate the toolbox into 3 contexts:
 
@@ -83,13 +67,38 @@ We separate the toolbox into 3 contexts:
 - `` JerryI`TDSTools`Transmission` `` : constructs transmission objects from sample and reference time-traces.
 - `` JerryI`TDSTools`Material` `` : extracts material parameters from transmission objects.
 
-### Time-traces
+#### Notes on GPU Acceleration
+Test were performed on Mac Air M1 (2021), where 4 cores are used for CPU calculations
+
+- single spectrum wall-time
+```
+GPU: 0.01 sec
+CPU: 0.46 sec
+```
+
+- 286 spectra wall-time
+```
+GPU: 6.05 sec
+CPU: 148.3 sec
+```
+
+- 1071 spectra wall-time
+```
+GPU: 22.1 sec
+CPU: 550.3 sec
+```
+
+The peformance can still be improved by moving more calculations on GPU side. It is in TODO list. 
+
+### Time-traces ⤵️
 To construct a time-trace object from a table, use:
 
 #### TDTrace
 ```mathematica
 TDTrace[q_QuantityArray] _TDTrace
 ```
+
+![](./imgs/trace.png)
 
 This accepts a `QuantityArray`. The units for the time-step must be provided. For example
 
@@ -117,7 +126,7 @@ Here is a list
 - `"Trace"` : return `QuantityArray` of the original time-trace. *Read-only*
 - `"FDCI"` : a range of frequency-domain confidence interval. It is generated according to the powerspectrum and provides a coarse estimation of the working range in wavenumbers. This interval will be used later for optimizing material parameters. *Read-only*
 
-### Reconstructing transmission function
+### Reconstructing transmission function ⤵️
 On the next step we can derive an initial information about the transmission based on the sample and reference time-traces
 
 #### TransmissionObject
@@ -125,6 +134,8 @@ A constructor
 ```mathematica
 TransmissionObject[sam_TDTrace, ref_TDTrace, "Thickness"->_Quantity, opts___] _TransmissionObject
 ```
+
+![](./imgs/tobject.png)
 
 it creates a special object, calculates fourier images, fixes possible jitter issues and estimates the transmission function, i.e.
 
@@ -168,7 +179,7 @@ new = Append[tr, {"Thickness"->Quantity[1.2, "Millimeters"], "Gain"->0.9}]
 
 It returns a new object, while the raw data is shared between them internally.
 
-#### Phase unwrapping
+#### Phase unwrapping 
 A key challenge in digital signal processing is managing the phase of the signal. To address this, phase unwrapping is employed, which transforms a discontinuous phase signal into a continuous one
 
 ```mathematica
@@ -184,17 +195,19 @@ it performs phase-unwrapping procedure on `t` object and returns a new `Transmis
 - `"PhaseShift"` : overrides a constant phase offset parameter to be used later in material parameters extraction
 
 
-### Material Parameters
+### Material Parameters ⤵️
 This the main goal of all optical spectroscopy: use EM waves to probe the responce function of the material to extract all useful properties. Here we focus on $n$ and $\kappa$ (or their derivatives).
 
-#### MaterialParameters
+#### MaterialParameters 
 A constructor and executor
 ```mathematica
 MaterialParameters[t_TransmissionObject, opts___] _MaterialParameters
 ```
 return `MaterialParameters` object, which contains all information about `n`, `k`, `\[Alpha]` (absorption coefficient). Depending on provided options it can use different methods to extract them
 
-It can also accept a list with multiple objects 
+![](./imgs/tmat.png)
+
+It can also accept a list with multiple transmission objects and process them as a batch
 
 ```mathematica
 MaterialParameters[{t__TransmissionObject}, opts___] _List
@@ -222,11 +235,15 @@ All properties are *read-only*.
 - `"Best Phase"` : returns `"Phase"` selected in the region of `"FDCI"`
 ---
 - `"\[Alpha]"` : returns `QuantityArray` of extracted absorption coefficient.
+- `"Raw \[Alpha]"` : returns `"\[Alpha]"` without FP cancellation applied.
 - `"n"` : returns extracted real part of refractive index as `QuantityArray`.
 - `"k"` : returns extracted imaginary part of refractive index as `QuantityArray`.
+- `"Raw k"` : returns `"k"` without FP cancellation applied.
 - `"Best \[Alpha]"` : returns `"\[Alpha]"` in the region of `"FDCI"`.
+- `"Best Raw \[Alpha]"` : returns `"\[Alpha]"` without FP cancellation applied in the region of `"FDCI"`.
 - `"Best n"` : returns `"n"` in the region of `"FDCI"`.
 - `"Best k"` : returns `"k"` in the region of `"FDCI"`.
+- `"Best Raw k"` : returns `"k"` without FP cancellation applied in the region of `"FDCI"`.
 ---
 - `"Thickness"` : returns the thickness of the material
 - `"Gain"` : returns gain of the sample signal (or an amplitude transmission function).
@@ -251,7 +268,7 @@ map = Table[With[{
   t = Append[utr, {
     "PhaseShift"->1, 
     "Gain"->gain, 
-    "Thickness"->Quantity[thickness, "Millimiters"]
+    "Thickness"->Quantity[thickness, "Millimeters"]
     }]
 },
   {thickness, gain, t}
@@ -276,7 +293,7 @@ The processed data will look like
 
 ![](./imgs/deconv.png)
 
-#### Bath processing (GPU only)
+#### Bath processing (GPU only) 🪈
 If you vary the parameters of the same `TransmissionObject` to avoid extra transactions to GPU, one can use provide the set as a list to `MaterialParameters` contructor
 
 ```mathematica
@@ -288,10 +305,13 @@ this function will group them by `Phase` arrays (comparison by the internal refe
 This also takes advantage of non-blocking execution model of OpenCL and loads all data at once.
 
 
-## Acknowledgments
+## Acknowledgments 💛
+The work of K.V. (@JerryI) was supported by the Deutsche
+Forschungsgemeinschaft (DFG, German Research Foundation)-__TRR 360-492547816__
+
 I am deeply grateful to Dr. Joachim Deisenhofer for countless discussions, endless support, and deep insights into THz spectroscopy.
 
-## References
+## References 📔
 We rely on well-known methods for material parameter extraction:
 
 - Material parameter extraction for terahertz time-domain spectroscopy using fixed-point iteration. W. Withayachumnankul, B. Ferguson, T. Rainsford, S. P. Mickan, and D. Abbott. Photonic Materials, Devices, and Applications (2005) DOI: 10.1117/12.612946.
