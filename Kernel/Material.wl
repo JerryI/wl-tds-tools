@@ -49,7 +49,7 @@ MaterialParameters[n_Association][s_String] := If[!KeyExistsQ[n, s],
 MaterialParameters /: Keys[t_MaterialParameters] :=  t["Properties"]
 
 
-MaterialParameters[n_Association]["Properties"] := {"Domain", "Best Transmission", "Transmission", "\[Alpha]", "Best \[Alpha]", "Frequencies", "Best n", "n", "Best k", "k", "Properties", "Thickness", "Tags", "Gain", "PhaseShift", "Phase", "FrequencyDomainConfidenceInterval", "FDCI", "FDCI2", "FrequencyDomainConfidenceInterval2", "FPReduction"}
+MaterialParameters[n_Association]["Properties"] := {"Domain", "Best Transmission", "Transmission", "Raw \[Alpha]", "Best Raw \[Alpha]", "\[Alpha]", "Best \[Alpha]", "Frequencies", "Best n", "n", "Best Raw k", "Raw k", "Best k", "k", "Properties", "Thickness", "Tags", "Gain", "PhaseShift", "Phase", "FrequencyDomainConfidenceInterval", "FDCI", "FDCI2", "FrequencyDomainConfidenceInterval2", "FPReduction"}
 
 MaterialParameters[n_Association]["FrequencyDomainConfidenceInterval"] := MaterialParameters[n]["FDCI"]
 
@@ -68,6 +68,13 @@ MaterialParameters[n_Association]["Best Phase"] := SelectBestRange[n] @ Quantity
 MaterialParameters[n_Association]["n"] := QuantityArray[Transpose[{n["Frequencies"] // Normal, n["n"] // Normal}], {1/"Centimeters", 1}]
 MaterialParameters[n_Association]["k"] := QuantityArray[Transpose[{n["Frequencies"] // Normal, n["k"] // Normal}], {1/"Centimeters", 1}]
 
+MaterialParameters[n_Association]["Raw k"] := QuantityArray[Transpose[{n["Frequencies"] // Normal, n["k debug"] // Normal}], {1/"Centimeters", 1}]
+MaterialParameters[n_Association]["Best Raw k"] := SelectBestRange[n] @ QuantityArray[Transpose[{n["Frequencies"] // Normal, n["k debug"] // Normal}], {1/"Centimeters", 1}]
+MaterialParameters[n_Association]["Raw Best k"] := SelectBestRange[n] @ QuantityArray[Transpose[{n["Frequencies"] // Normal, n["k debug"] // Normal}], {1/"Centimeters", 1}]
+
+
+
+
 SelectBestRange[n_][list_] := With[{ranges = findFDCIRanges[MaterialParameters[n] ]},
   list[[ranges[[1]] ;; ranges[[2]] ]]
 ]
@@ -76,9 +83,13 @@ MaterialParameters[n_Association]["Best n"] := SelectBestRange[n] @ QuantityArra
 MaterialParameters[n_Association]["Best k"] := SelectBestRange[n] @ QuantityArray[Transpose[{n["Frequencies"] // Normal, n["k"] // Normal}], {1/"Centimeters", 1}]
 
 MaterialParameters[n_Association]["Best \[Alpha]"] := SelectBestRange[n] @ QuantityArray[{#[[1]], (#[[2]] 4 \[Pi]  10^12 #[[1]])/(33.356 2.9979 10^10)} &/@ Transpose[{n["Frequencies"] // Normal, n["k"] // Normal}], {1/"Centimeters", 1/"Centimeters"}]
-
+MaterialParameters[n_Association]["Best Raw \[Alpha]"] := SelectBestRange[n] @ QuantityArray[{#[[1]], (#[[2]] 4 \[Pi]  10^12 #[[1]])/(33.356 2.9979 10^10)} &/@ Transpose[{n["Frequencies"] // Normal, n["k debug"] // Normal}], {1/"Centimeters", 1/"Centimeters"}]
+MaterialParameters[n_Association]["Raw Best \[Alpha]"] := MaterialParameters[n]["Best Raw \[Alpha]"]
 
 MaterialParameters[n_Association]["\[Alpha]"] := QuantityArray[{#[[1]], (#[[2]] 4 \[Pi]  10^12 #[[1]])/(33.356 2.9979 10^10)} &/@ Transpose[{n["Frequencies"] // Normal, n["k"] // Normal}], {1/"Centimeters", 1/"Centimeters"}]
+
+MaterialParameters[n_Association]["Raw \[Alpha]"] := QuantityArray[{#[[1]], (#[[2]] 4 \[Pi]  10^12 #[[1]])/(33.356 2.9979 10^10)} &/@ Transpose[{n["Frequencies"] // Normal, n["k debug"] // Normal}], {1/"Centimeters", 1/"Centimeters"}]
+
 
 MaterialParameters[n_Association]["Frequencies"] := QuantityArray[n["Frequencies"] // Normal, 1/"Centimeters"]
 MaterialParameters[n_Association]["Domain"] := Quantity[#, 1/"Centimeters"] &/@ MinMax[Normal @ n["Frequencies"]]
