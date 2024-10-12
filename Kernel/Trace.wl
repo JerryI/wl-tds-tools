@@ -65,7 +65,7 @@ TDTrace[n_NumericArray]["FrequencyDomainConfidenceInterval"] := Module[{model, x
   With[{d = TDTrace[n]["PowerSpectrum"]//QuantityMagnitude}, 
     model = NonlinearModelFit[Drop[d,10], A Exp[-(*FB[*)(((*SpB[*)Power[(x0 - x)(*|*),(*|*)2](*]SpB*))(*,*)/(*,*)((*SpB[*)Power[\[Sigma](*|*),(*|*)2](*]SpB*)))(*]FB*)], {\[Sigma], A, x0}, x, ConfidenceLevel->0.5, Method->"NMinimize"];
     model = Association[model[[1]]["Model"]["FittedParameterRules"]];
-    Quantity[#, 1/"Centimeters"] &/@ {Clip[model[x0] - Abs[model[\[Sigma]]], {0, Infinity}], 1.2 Clip[model[x0] + Abs[model[\[Sigma]]], {0, Infinity}]}
+    Quantity[#, 1/"Centimeters"] &/@ {Clip[model[x0] - Abs[model[\[Sigma]]], {5.0, Infinity}], 1.2 Clip[model[x0] + Abs[model[\[Sigma]]], {30.0, Infinity}]}
   ]
 ]
 TDTrace[n_NumericArray]["FDCI"] := TDTrace[n]["FrequencyDomainConfidenceInterval"]

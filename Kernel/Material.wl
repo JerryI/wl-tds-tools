@@ -358,7 +358,7 @@ materialParameters[list: List[__TransmissionObject], destCl_, srcCl_, metaCl_, {
 
   clRun[destCl, srcCl, metaCl, itemSize, groupSize, NKCycles, MovingAverageFilter,  FabryPerotCycles, groupSize 256];
 
-  Print[StringTemplate["Group size: ``"][groupSize] ];
+
 
   With[{
     dest = destCl,
