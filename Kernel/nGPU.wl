@@ -4,7 +4,7 @@ Begin["`Private`"]
 root = DirectoryName[$InputFileName];
 clFile = FileNameJoin[{root, "nGPU.cl"}];
 
-If[!(compiledQ // TrueQ), Module[{},
+If[!(compiledQ // TrueQ) && OpenCLQ[], Module[{},
   Print[Style["TDTools`nGPU >> Compiling to OpenCL", Italic] ];
 
   clRun = OpenCLFunctionLoad[File[clFile], "clRun", {

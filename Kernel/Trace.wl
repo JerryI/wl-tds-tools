@@ -61,13 +61,14 @@ TDTrace[n_NumericArray]["Trace"]    := QuantityArray[n // Normal, {"Picoseconds"
 TDTrace[n_NumericArray]["Spectrum"] := QuantityArray[fourier2d[TDTrace[n]["Trace"] // QuantityMagnitude], {1/"Centimeters", 1}]
 
 
-TDTrace[n_NumericArray]["FrequencyDomainConfidenceInterval"] := Module[{model, x0, \[Sigma], A},
+TDTrace[n_NumericArray]["FrequencyDomainConfidenceInterval"] := Module[{ model, x0, \[Sigma], A},
   With[{d = TDTrace[n]["PowerSpectrum"]//QuantityMagnitude}, 
     model = NonlinearModelFit[Drop[d,10], A Exp[-(*FB[*)(((*SpB[*)Power[(x0 - x)(*|*),(*|*)2](*]SpB*))(*,*)/(*,*)((*SpB[*)Power[\[Sigma](*|*),(*|*)2](*]SpB*)))(*]FB*)], {\[Sigma], A, x0}, x, ConfidenceLevel->0.5, Method->"NMinimize"];
-    model = Association[model[[1]]["Model"]["FittedParameterRules"]];
+    model = Association[model["BestFitParameters"]];
     Quantity[#, 1/"Centimeters"] &/@ {Clip[model[x0] - Abs[model[\[Sigma]]], {5.0, Infinity}], 1.2 Clip[model[x0] + Abs[model[\[Sigma]]], {30.0, Infinity}]}
   ]
 ]
+
 TDTrace[n_NumericArray]["FDCI"] := TDTrace[n]["FrequencyDomainConfidenceInterval"]
 
 TDTrace[n_NumericArray]["PowerSpectrum"] := QuantityArray[{#[[1]], Abs[#[[2]]]^2}&/@fourier2d[TDTrace[n]["Trace"] // QuantityMagnitude], {1/"Centimeters", 1}]
