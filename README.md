@@ -1,7 +1,7 @@
 # Time-Domain Spectroscopy Tools 🧰
 A small library for high-precision material parameter extraction from time-domain THz signals, written in Wolfram Language 🐺 and OpenCL 🏎️
 
-*Developed at Augsburg University, Germany 🇩🇪*
+*Developed at University of Augsburg, Germany 🇩🇪*
 
 <h4>Beta testing ♲</h4> 
 
