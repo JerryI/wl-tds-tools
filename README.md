@@ -11,7 +11,7 @@ A small library for high-precision material parameter extraction from time-domai
 
 ## Features
 - Fabry-Pérot deconvolution ⭐️
-- Informed phase unwrapping
+- Informed Automatic / semi-automatic phase unwrapping
 - High precision / various approximation methods for $n$, $\kappa$, and $\alpha$ solving
 - Works for both thin and thick samples
 - **GPU Acceleration** (OpenCL) ⭐️
@@ -197,7 +197,35 @@ TransmissionUnwrap[t_TransmissionObject, type_String, opts___] _TransmissionObje
 
 it performs phase-unwrapping procedure on `t` object and returns a new `TransmissionObject` with a modified phase. There is only one sheme specified by `type` for unwrapping is available for now 
 
-- `"Basic"` : uses informed phase unwrapping based on a time-delay between the sample and the reference signals
+##### type
+###### Automatic unwrapping
+- `"Basic"` or `Automatic` : uses informed phase unwrapping based on a time-delay between the sample and the reference signals
+
+###### Semi-automatic
+- `"Held"` : uses informed phase unwrapping based and returns a held expression with all phase shifts calculated for further modifications by a user.
+
+If `ReleaseHold` is applied the result will be the same as for `Automatic` type. To take advantage of held unwrapping, i.e. apply your adjustmenets to individual points you need to define a wrapper function. For example, this one will act like identity operation
+
+```mathematica
+myPhaseTransform[Hold[callback_[{parts_, joints_}]]] := Module[{
+  myJoints = joints
+},
+  (* modify points *)
+
+  callback[{parts, myJoints}]
+]
+
+newObject = TransmissionUnwrap[object, "Held"] // myPhaseTransform
+```
+
+the structure of `parts` and `joints` are
+```
+{part1  : {{wavenumber1, phase1}, ..}, part2 : {{wavenumberk, phasek}, ..}}
+{joint1 : {sign12, phaseJump12}, ..}
+```
+
+where `sign12` denotes the sign of a phase jump between parts, while `phaseJump12` is suggested by automatica unwrapper an integer to compenstate this discontinuity. 
+
 
 #### Options
 - `"PhaseThreshold"` : sets the treshold for a detector to remove `2Pi` jump. By the default is `5.6`

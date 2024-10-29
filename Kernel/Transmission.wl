@@ -254,7 +254,7 @@ validateOptions[OptionsPattern[] ] := With[{},
   ]
 ]
 
-TransmissionUnwrap[t: TransmissionObject[a_], "Basic", OptionsPattern[]] := With[{
+TransmissionUnwrap[t: TransmissionObject[a_], "Basic" | Automatic, OptionsPattern[]] := With[{
   offset = offsetPhase[a],
   th = OptionValue["PhaseThreshold"]//N,
   phaseShift = OptionValue["PhaseShift"]
@@ -274,6 +274,45 @@ TransmissionUnwrap[t: TransmissionObject[a_], "Basic", OptionsPattern[]] := With
 ]
 
 Options[TransmissionUnwrap] = {"PhaseThreshold"->5.6, "PhaseShift"->0};
+
+
+TransmissionUnwrap[t: TransmissionObject[a_], "Held" | "Hold", OptionsPattern[]] := With[{
+  th = OptionValue["PhaseThreshold"]//N,
+  phaseShift = OptionValue["PhaseShift"]
+},
+  applyDefferedBranching[t, th, phaseShift]
+]
+
+
+splitPhase[tr_, th_:3.16] := With[{
+  phase = QuantityMagnitude[tr["Phase Features"], {1/"Centimeters", 1}]
+},
+  Split[phase, Not[Abs[(#2[[2]]-#1[[2]])] > th] &]
+]
+
+autoAdjust[joints_] := Map[Function[item, {item[[1]], item[[1]]}], joints];
+recombinePhase[sausages_, joints_] := With[{
+  accumulated = Accumulate[joints[[All,2]]] 
+}, 
+  Flatten[Join[{sausages[[1,All,2]]}, Table[
+    Map[Function[p, p[[2]] + 2Pi accumulated[[i-1]]], sausages[[i]]]
+  , {i, 2, Length[sausages]}]], 1]
+]
+
+applyDefferedBranching[tr_, th_:5.7, shift_:0] := Module[{sausages, joints, offset, freqs},
+  offset = 2 Pi (1/33.356) QuantityMagnitude[tr["\[Delta]t"], "Picoseconds"];
+  freqs = Normal[tr[[1]]["Frequencies"]];
+  sausages = splitPhase[tr, th];
+  joints = Table[{-Sign[sausages[[i+1, 1, 2]] - sausages[[i, -1, 2]]], 0}, {i, Length[sausages]-1}] // autoAdjust;
+
+
+  With[{sausages = sausages, joints = joints, off = offset freqs},
+    transmissionPhaseRecombine[tr, shift, off][{sausages, joints}] // Hold 
+  ]
+]
+
+transmissionPhaseRecombine[tr_, shift_, off_][{sausages_, joints_}] := (Append[tr, {"Phase"->NumericArray[recombinePhase[sausages, joints] + off], "PhaseShift"->shift}]);
+
 
 End[]
 EndPackage[]
