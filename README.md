@@ -12,9 +12,10 @@ A small library for high-precision material parameter extraction from time-domai
 ## Features
 - Fabry-Pérot deconvolution ⭐️
 - Informed phase unwrapping
-- High precision for $n$, $\kappa$, and $\alpha$ solving
+- High precision / various approximation methods for $n$, $\kappa$, and $\alpha$ solving
 - Works for both thin and thick samples
 - **GPU Acceleration** (OpenCL) ⭐️
+- Kramers-Kronig approximation of $n$ feature (if needed)
 - Functional approach, no hidden state
 - Syntax sugar with data preview ⭐️
 - Jitter-proof
@@ -156,10 +157,18 @@ One can provide the following `opts` to the constructor
 - `"\[Delta]t"` : returns estimated time-delay between the sample and the reference signals. *Read-only*
 - `"Gain"` : returns a multiplier for `sam` signal
 - `"PhaseShift"` : returns a constanst offset of the phase in multples of `2Pi`
+- `"n0"` : returns DC refractive index, it will be updated if one change the thickness of the material using append *Read-only*
+- `"Date"` : returns date, when an object was modified last time
 ---
 - `"Frequencies"` : returns `QuantityArray` of the whole range of frequencies. *Read-only*
 - `"Transmission"` : returns the power transmission `QuantityArray`, i.e. array of $|\hat{t}(\omega)|^2$. *Read-only*
 - `"Phase"` : returns the argument of $\hat{t}$ sampled as a function of frequency in a form of `QuantityArray`. After the creation is wrapped and cannot be used before unwrapping process (see later). *Read-only*
+- `"Phase Features"` : returns quantity array of `"Phase"` with subtracted DC contribution of the refractive index
+- `"Kramers-Kronig n"` : (approximatiton!) returns quantity array of refractive index derived from the transmission using Kramers-Kronig relation (discrete)
+---
+- `"Approximated n"` : (approximatiton!) returns quantity array of refractive index derived from the phase directly
+- `"Approximated k"` : (approximatiton!) returns quantity array of imaginary refractive index derived from the transmission directly
+- `"Approximated \[Alpha]"` : (approximatiton!) returns quantity array of absorption coefficient derived from the transmission directly
 ---
 - `"Domain"` : returns the ranges of frequencies. *Read-only*
 - `"FDCI"` : a range of frequency-domain confidence interval. It is generated according to the powerspectrum and provides a coarse estimation of the working range in wavenumbers. This interval will be used later for optimizing material parameters. *Read-only*
@@ -231,8 +240,10 @@ All properties are *read-only*.
 - `"Frequencies"` : returns `QuantityArray` of frequencies
 - `"Transmission"` : returns `QuantityArray` of a power transmission. If `FabryPerotCancellation` is applied, it will return deconvoluted spectrum. 
 - `"Best Transmission"` : returns `"Transmission"` selected in the region of `"FDCI"`
-- `"Phase"` : returns `QuantityArray` of the phase of the transmissino function. 
+- `"Phase"` : returns `QuantityArray` of the phase of the transmissino function.
+- `"Phase Features"` : returns quantity array of `"Phase"` with subtracted DC contribution of the refractive index 
 - `"Best Phase"` : returns `"Phase"` selected in the region of `"FDCI"`
+- `"Best Phase Features"` : returns quantity array of `"Phase"` with subtracted DC contribution of the refractive index  in the region of `"FDCI"`
 ---
 - `"\[Alpha]"` : returns `QuantityArray` of extracted absorption coefficient.
 - `"Raw \[Alpha]"` : returns `"\[Alpha]"` without FP cancellation applied.

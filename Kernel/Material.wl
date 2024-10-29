@@ -59,10 +59,25 @@ MaterialParameters[n_Association]["Transmission"] := QuantityArray[Transpose[{n[
 
 MaterialParameters[n_Association]["Phase"] := QuantityArray[Transpose[{n["Frequencies"] // Normal, Normal[n["Phase"]]}], {1/"Centimeters", 1}]
 
+MaterialParameters[a_Association]["Phase Features"] := With[{
+  offset = offsetPhase[ a ],
+  raw = Normal[ a["Phase"] ]
+},
+  QuantityArray[Transpose[{Normal @ a["Frequencies"], raw - offset }], {1/"Centimeters", 1}]
+]
+
 
 MaterialParameters[n_Association]["Best Transmission"] := SelectBestRange[n] @ QuantityArray[Transpose[{n["Frequencies"] // Normal, Normal[n["T"]]^2}], {1/"Centimeters", 1}]
 
 MaterialParameters[n_Association]["Best Phase"] := SelectBestRange[n] @ QuantityArray[Transpose[{n["Frequencies"] // Normal, Normal[n["Phase"]]}], {1/"Centimeters", 1}]
+
+
+MaterialParameters[a_Association]["Best Phase Features"] := With[{
+  offset = offsetPhase[ a ],
+  raw = Normal[ a["Phase"] ]
+},
+  SelectBestRange[n] @ QuantityArray[Transpose[{Normal @ a["Frequencies"], raw - offset }], {1/"Centimeters", 1}]
+]
 
 
 MaterialParameters[n_Association]["n"] := QuantityArray[Transpose[{n["Frequencies"] // Normal, n["n"] // Normal}], {1/"Centimeters", 1}]
@@ -72,7 +87,12 @@ MaterialParameters[n_Association]["Raw k"] := QuantityArray[Transpose[{n["Freque
 MaterialParameters[n_Association]["Best Raw k"] := SelectBestRange[n] @ QuantityArray[Transpose[{n["Frequencies"] // Normal, n["k debug"] // Normal}], {1/"Centimeters", 1}]
 MaterialParameters[n_Association]["Raw Best k"] := SelectBestRange[n] @ QuantityArray[Transpose[{n["Frequencies"] // Normal, n["k debug"] // Normal}], {1/"Centimeters", 1}]
 
-
+offsetPhase[t_] := With[{
+  offset = 2 Pi (1/33.356) QuantityMagnitude[t["\[Delta]t"], "Picoseconds"],
+  freqs = Normal[t["Frequencies"]]
+},
+  offset freqs 
+]
 
 
 SelectBestRange[n_][list_] := With[{ranges = findFDCIRanges[MaterialParameters[n] ]},
@@ -96,7 +116,7 @@ MaterialParameters[n_Association]["Domain"] := Quantity[#, 1/"Centimeters"] &/@ 
 
 
 MaterialParameters[a_Association]["FDCI2"] := 
-  With[{phase = MaterialParameters[a]["Phase"] // QuantityMagnitude}, 
+  With[{phase = QuantityMagnitude[MaterialParameters[a]["Phase"], {1/"Centimeters", 1}] }, 
     With[{r = Table[
         {phase[[q, 1]], 
           LinearModelFit[Take[phase, q], {1, x}, x]["RSquared"]}, 
@@ -395,10 +415,14 @@ materialParameters[list: List[__TransmissionObject], destCl_, srcCl_, metaCl_, {
 ] ]
 
 findFDCIRanges[mFp_MaterialParameters] := 
-  With[{m = mFp["Frequencies"] // QuantityMagnitude}, 
+  With[{
+    m = QuantityMagnitude[mFp["Frequencies"], 1/"Centimeters"] ,
+    left = QuantityMagnitude[mFp["FDCI"][[1]], 1/"Centimeters"],
+    right = QuantityMagnitude[mFp["FDCI"][[2]], 1/"Centimeters"]
+  }, 
     {
-      FirstPosition[m, x_ /; (x > QuantityMagnitude[mFp["FDCI"][[1]]])] // First,
-      Length[m] - FirstPosition[m // Reverse, x_ /; (x < QuantityMagnitude[mFp["FDCI"][[2]]])] // First
+      FirstPosition[m, x_ /; (x > left)] // First,
+      Length[m] - FirstPosition[m // Reverse, x_ /; (x < right)] // First
     }
   ];
 

@@ -43,20 +43,21 @@ TransmissionObject[sam_TDTrace, ref_TDTrace, opts: OptionsPattern[]] := Module[{
         freqs = fsam[[All,1]]
       },
         With[{
-          pDiff = 2 Pi (1/33.356) freqs (t0Sam - t0Ref)
+          pDiff = 2 Pi (1/33.356) freqs (t0Sam - t0Ref) 
         },
         
         TransmissionObject[<|
           "\[Delta]t"->Quantity[(t0Sam-t0Ref), "Picoseconds"], 
           "T"->NumericArray[t], 
           "Thickness"->Quantity[thickness, "Centimeters"],
+          "n0" -> 1.0 + (0.029979 (t0Sam-t0Ref) / thickness),
           "Gain"->gain,
           "FDCI"->sam["FDCI"],
           "Size" -> Length[freqs],
           "PhaseShift"->0,
           "Date" ->Now,
           "Tags" -> OptionValue["Tags"],
-          "Phase"->NumericArray[Arg[fsam[[All,2]]] - Arg[fref[[All,2]]] ], 
+          "Phase"->NumericArray[   Arg[Exp[I (Arg[fsam[[All,2]]] - Arg[fref[[All,2]]]) ] Exp[ -I pDiff ] ] + pDiff ], 
           "Frequencies"->NumericArray[freqs], (Sequence @@ Options[TransmissionObject]), 
           opts
         |>]
@@ -65,6 +66,21 @@ TransmissionObject[sam_TDTrace, ref_TDTrace, opts: OptionsPattern[]] := Module[{
     ]
   ]
 ]]
+
+(* by Thies Heidecke see https://mathematica.stackexchange.com/questions/341/implementing-discrete-and-continuous-hilbert-transforms *)
+HilbertSpectrum[0] := {};
+HilbertSpectrum[n_Integer?Positive] := With[{nhalf = Quotient[n - 1, 2]},
+  Join[{0}, ConstantArray[-I, nhalf], If[EvenQ[n], {0}, {}]
+          , ConstantArray[ I, nhalf]
+  ]
+];
+
+Hilbert[data_?VectorQ, padding_Integer?NonNegative] := Module[
+  {fp = FourierParameters -> {1, -1}, n = Length[data], m, paddeddata},
+  m = n + padding;
+  paddeddata = PadRight[data, m];
+  Re @ InverseFourier[ HilbertSpectrum[m] Fourier[paddeddata, fp], fp][[;;n]]
+]
 
 TransmissionObject /: MakeBoxes[obj: TransmissionObject[a_Association], StandardForm] := With[{
   preview = ListLinePlot[ArrayResample[Select[obj["Transmission"]//QuantityMagnitude//dropHalf, #[[2]]<1.0 &], 300], PlotStyle->ColorData[97][2], PlotRange->Full,Axes -> None, ImagePadding->None],
@@ -81,6 +97,7 @@ TransmissionObject /: MakeBoxes[obj: TransmissionObject[a_Association], Standard
           {BoxForm`SummaryItem[{"Gain ", obj["Gain"]}]},
           {BoxForm`SummaryItem[{"PhaseShift ", 2Pi obj["PhaseShift"]}]},
           {BoxForm`SummaryItem[{"Phase ", state}]},
+          {BoxForm`SummaryItem[{"n0 ", obj["n0"]}]},
           If[Length[obj["Tags"]//Keys] > 0, {BoxForm`SummaryItem[{"Tags ", Style[#, Background->LightBlue]&/@obj["Tags"]//Keys}]}, Nothing]
         };
 
@@ -103,16 +120,44 @@ TransmissionObject[a_Association][prop_String] := If[!KeyExistsQ[a, prop],
   a[prop]
 ]
 
+TransmissionObject[a_Association]["Kramers-Kronig n"] := With[{
+  n0 = a["n0"],
+  thickness = QuantityMagnitude[a["Thickness"], "Centimeters"],
+  freqs = Normal @ a["Frequencies"]
+},
+  With[{
+    im\[Chi] =  (- (*FB[*)((1)(*,*)/(*,*)(#[[1]] thickness))(*]FB*) Log[#[[2]]]) &/@ Drop[QuantityMagnitude[TransmissionObject[a]["Transmission"], {1/"Centimeters", 1} ], 1]
+  },
+    QuantityArray[{freqs, Join[{n0}, (*SqB[*)Sqrt[n0^2 - Hilbert[im\[Chi], 0] ](*]SqB*)]} // Transpose, {1/"Centimeters", 1}]
+  ]
+]
+
 TransmissionObject[a_Association]["Transmission"] := QuantityArray[Transpose[{Normal @ a["Frequencies"], (*SpB[*)Power[(a["Gain"] Normal @ a["T"])(*|*),(*|*)2](*]SpB*)}], {1/"Centimeters", 1}]
 
-TransmissionObject /: Append[TransmissionObject[a_Association], props_Association] := TransmissionObject[Join[a, props] ]
-TransmissionObject /: Append[TransmissionObject[a_Association], prop_Rule] := TransmissionObject[Append[a, prop] ]
-TransmissionObject /: Append[TransmissionObject[a_Association], props_List] := TransmissionObject[Append[a, props] ]
+updateThicknessDependent[a_Association ] := With[{
+
+},
+  Join[a, <|
+    "n0" -> 1.0 + (0.029979 QuantityMagnitude[a["\[Delta]t"], "Picoseconds" ] / QuantityMagnitude[a["Thickness"], "Centimeters"]),
+    "Date" ->Now
+  |>] 
+]
+
+TransmissionObject /: Append[TransmissionObject[a_Association], props_Association] := TransmissionObject[Join[a, props] // updateThicknessDependent ]
+TransmissionObject /: Append[TransmissionObject[a_Association], prop_Rule] := TransmissionObject[Append[a, prop] // updateThicknessDependent ]
+TransmissionObject /: Append[TransmissionObject[a_Association], props_List] := TransmissionObject[Append[a, props] // updateThicknessDependent ]
 
 TransmissionObject[a_Association]["Frequencies"] := QuantityArray[Normal @ a["Frequencies"], 1/"Centimeters"]
 
 TransmissionObject[a_Association]["Domain"] := Quantity[#, 1/"Centimeters"] &/@ MinMax[Normal @ a["Frequencies"]]
 
+
+offsetPhase[t_] := With[{
+  offset = 2 Pi (1/33.356) QuantityMagnitude[t["\[Delta]t"], "Picoseconds"],
+  freqs = Normal[t["Frequencies"]]
+},
+  offset freqs 
+]
 
 TransmissionObject[a_Association]["Phase"] := With[{
   shift = 2 Pi (1/33.356) QuantityMagnitude[a["\[Delta]t"], "Picoseconds"] Normal[a["Frequencies"]],
@@ -121,13 +166,52 @@ TransmissionObject[a_Association]["Phase"] := With[{
   QuantityArray[Transpose[{Normal @ a["Frequencies"], (Normal @ a["Phase"])}], {1/"Centimeters", 1}]
 ]
 
+TransmissionObject[a_Association]["Phase Features"] := With[{
+  offset = offsetPhase[ a ],
+  raw = Normal[ a["Phase"] ]
+},
+  QuantityArray[Transpose[{Normal @ a["Frequencies"], raw - offset }], {1/"Centimeters", 1}]
+]
+
+
+TransmissionObject[a_Association]["Approximated k"] := With[{
+  thickness = QuantityMagnitude[a["Thickness"], "Centimeters"],
+  gain = a["Gain"]
+},
+  QuantityArray[
+    Join[{0, 0}, {#[[1]], - 0.159152 Log[#[[2]] gain ] / (#[[1]] thickness) } &/@ Drop[Transpose[Normal /@ {a["Frequencies"], a["T"]}], 1] ]
+  , {1/"Centimeters", 1}]
+]
+
+TransmissionObject[a_Association]["Approximated \[Alpha]"] := With[{
+  thickness = QuantityMagnitude[a["Thickness"], "Centimeters"],
+  gain = a["Gain"]
+},
+  QuantityArray[
+    Join[{0, 0}, {#[[1]], ((- 0.159152 Log[#[[2]] gain ] / (#[[1]] thickness)) 4 \[Pi]  10^12 #[[1]])/(33.356 2.9979 10^10)} &/@ Drop[Transpose[Normal /@ {a["Frequencies"], a["T"]}], 1] ]
+  , {1/"Centimeters", 1/"Centimeters"}]
+]
+
+
+TransmissionObject[a_Association]["Approximated n"] := With[{
+  shift = a["PhaseShift"],
+  thickness = QuantityMagnitude[a["Thickness"], "Centimeters"],
+  n0 = a["n0"]
+},
+  QuantityArray[
+    Join[{0, n0}, {#[[1]], 1.0 + 0.159152 (#[[2]] + shift) / (#[[1]] thickness) } &/@ Drop[Transpose[Normal /@ {a["Frequencies"], a["Phase"]}],1] ]
+  , {1/"Centimeters", 1}]
+]
+
+
+
 TransmissionObject[a_Association]["FrequencyDomainConfidenceInterval"] := TransmissionObject[a]["FDCI"]
 
 TransmissionObject[a_Association]["FrequencyDomainConfidenceInterval2"] := TransmissionObject[a]["FDCI2"]
 
 
 TransmissionObject[a_Association]["FDCI2"] := 
-With[{phase = TransmissionObject[a]["Phase"] // QuantityMagnitude},
+With[{phase = QuantityMagnitude[TransmissionObject[a]["Phase"], {1/"Centimeters", 1}]},
   With[{r = Table[{phase[[q, 1]], 
       LinearModelFit[Take[phase, q], {1, x}, x]["RSquared"]}, 
      {q, Round[0.2 (phase // Length)], phase // Length, 25}]},
@@ -150,7 +234,7 @@ phaseState[phase_List] := With[{},
 
 TransmissionObject /: Keys[t_TransmissionObject] :=  t["Properties"]
 
-TransmissionObject[a_Association]["Properties"] := Join[Options[TransmissionObject][[All,1]], {"Properties", "Frequencies", "Transmission", "Phase", "\[Delta]t", "Gain", "PhaseShift", "Thickness", "Domain", "FrequencyDomainConfidenceInterval", "FDCI", "FDCI2", "FrequencyDomainConfidenceInterval2"}]
+TransmissionObject[a_Association]["Properties"] := Join[Options[TransmissionObject][[All,1]], {"Properties", "n0", "Approximated n", "Approximated k", "Approximated \[Alpha]", "Kramers-Kronig n", "Frequencies", "Transmission", "Phase", "Phase Features", "\[Delta]t", "Gain", "PhaseShift", "Thickness", "Domain", "FrequencyDomainConfidenceInterval", "FDCI", "FDCI2", "FrequencyDomainConfidenceInterval2"}]
 
 Options[TransmissionObject] = {"Thickness"->Null, "Tags"-><||>, "Gain"->1.0, "PhaseShift"->0};
 
@@ -171,9 +255,8 @@ validateOptions[OptionsPattern[] ] := With[{},
 ]
 
 TransmissionUnwrap[t: TransmissionObject[a_], "Basic", OptionsPattern[]] := With[{
-  offset = 2 Pi (1/33.356) QuantityMagnitude[t["\[Delta]t"], "Picoseconds"] ,
+  offset = offsetPhase[a],
   th = OptionValue["PhaseThreshold"]//N,
-  freqs = Normal[a["Frequencies"]],
   phaseShift = OptionValue["PhaseShift"]
 },
   If[!NumericQ[OptionValue["PhaseThreshold"] ] || !NumericQ[OptionValue["PhaseShift"] ],
@@ -182,9 +265,9 @@ TransmissionUnwrap[t: TransmissionObject[a_], "Basic", OptionsPattern[]] := With
   ];
 
   With[{unwrapped = With[{
-    phase = Normal[a["Phase"]]
+    phase = Normal[a["Phase"] ]
   },
-    clusterPhase[phase - offset freqs, 1, Length[phase]-1, th] + offset freqs
+    clusterPhase[phase - offset, 1, Length[phase]-1, th] + offset
   ]},
     Append[t, {"Phase"->NumericArray[unwrapped], "PhaseShift"->phaseShift}]
   ]

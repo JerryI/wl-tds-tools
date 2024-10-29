@@ -58,11 +58,11 @@ TDTrace /: MakeBoxes[obj: TDTrace[n_NumericArray], StandardForm] := With[{
 
 TDTrace[n_NumericArray][s_String]    := (Message[TDTrace::unknownprop, s]; $Failed)
 TDTrace[n_NumericArray]["Trace"]    := QuantityArray[n // Normal, {"Picoseconds", 1}]
-TDTrace[n_NumericArray]["Spectrum"] := QuantityArray[fourier2d[TDTrace[n]["Trace"] // QuantityMagnitude], {1/"Centimeters", 1}]
+TDTrace[n_NumericArray]["Spectrum"] := QuantityArray[fourier2d[ QuantityMagnitude[TDTrace[n]["Trace"], {"Picoseconds", 1} ] ], {1/"Centimeters", 1}]
 
 
 TDTrace[n_NumericArray]["FrequencyDomainConfidenceInterval"] := Module[{ model, x0, \[Sigma], A},
-  With[{d = TDTrace[n]["PowerSpectrum"]//QuantityMagnitude}, 
+  With[{d = QuantityMagnitude[TDTrace[n]["PowerSpectrum"], {1/"Centimeters", 1}]}, 
     model = NonlinearModelFit[Drop[d,10], A Exp[-(*FB[*)(((*SpB[*)Power[(x0 - x)(*|*),(*|*)2](*]SpB*))(*,*)/(*,*)((*SpB[*)Power[\[Sigma](*|*),(*|*)2](*]SpB*)))(*]FB*)], {\[Sigma], A, x0}, x, ConfidenceLevel->0.5, Method->"NMinimize"];
     model = Association[model["BestFitParameters"]];
     Quantity[#, 1/"Centimeters"] &/@ {Clip[model[x0] - Abs[model[\[Sigma]]], {5.0, Infinity}], 1.2 Clip[model[x0] + Abs[model[\[Sigma]]], {30.0, Infinity}]}
@@ -71,7 +71,7 @@ TDTrace[n_NumericArray]["FrequencyDomainConfidenceInterval"] := Module[{ model, 
 
 TDTrace[n_NumericArray]["FDCI"] := TDTrace[n]["FrequencyDomainConfidenceInterval"]
 
-TDTrace[n_NumericArray]["PowerSpectrum"] := QuantityArray[{#[[1]], Abs[#[[2]]]^2}&/@fourier2d[TDTrace[n]["Trace"] // QuantityMagnitude], {1/"Centimeters", 1}]
+TDTrace[n_NumericArray]["PowerSpectrum"] := QuantityArray[{#[[1]], Abs[#[[2]]]^2}&/@fourier2d[ QuantityMagnitude[TDTrace[n]["Trace"], {"Picoseconds", 1} ] ], {1/"Centimeters", 1}]
 
 TDTrace[n_NumericArray]["Properties"] := {"Properties", "Spectrum", "PowerSpectrum", "Trace", "FrequencyDomainConfidenceInterval", "FDCI"}
 
