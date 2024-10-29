@@ -21,6 +21,8 @@ root = DirectoryName[$InputFileName];
 
 TransmissionObject::thickerr = "Thickness `1` is not valid";
 
+(* :: Constructor :: *)
+
 TransmissionObject[sam_TDTrace, ref_TDTrace, opts: OptionsPattern[]] := Module[{}, With[{
   thickness = QuantityMagnitude[OptionValue["Thickness"], "Centimeters"],
   gain = OptionValue["Gain"]
@@ -120,6 +122,8 @@ TransmissionObject[a_Association][prop_String] := If[!KeyExistsQ[a, prop],
   a[prop]
 ]
 
+(* :: Calculated properties :: *)
+
 TransmissionObject[a_Association]["Kramers-Kronig n"] := With[{
   n0 = a["n0"],
   thickness = QuantityMagnitude[a["Thickness"], "Centimeters"],
@@ -134,6 +138,8 @@ TransmissionObject[a_Association]["Kramers-Kronig n"] := With[{
 
 TransmissionObject[a_Association]["Transmission"] := QuantityArray[Transpose[{Normal @ a["Frequencies"], (*SpB[*)Power[(a["Gain"] Normal @ a["T"])(*|*),(*|*)2](*]SpB*)}], {1/"Centimeters", 1}]
 
+(* :: Transition methods :: *)
+
 updateThicknessDependent[a_Association ] := With[{
 
 },
@@ -143,9 +149,13 @@ updateThicknessDependent[a_Association ] := With[{
   |>] 
 ]
 
+
+
 TransmissionObject /: Append[TransmissionObject[a_Association], props_Association] := TransmissionObject[Join[a, props] // updateThicknessDependent ]
 TransmissionObject /: Append[TransmissionObject[a_Association], prop_Rule] := TransmissionObject[Append[a, prop] // updateThicknessDependent ]
 TransmissionObject /: Append[TransmissionObject[a_Association], props_List] := TransmissionObject[Append[a, props] // updateThicknessDependent ]
+
+(* :: Normal properties :: *)
 
 TransmissionObject[a_Association]["Frequencies"] := QuantityArray[Normal @ a["Frequencies"], 1/"Centimeters"]
 
@@ -173,6 +183,8 @@ TransmissionObject[a_Association]["Phase Features"] := With[{
   QuantityArray[Transpose[{Normal @ a["Frequencies"], raw - offset }], {1/"Centimeters", 1}]
 ]
 
+
+(* :: Approximated properties :: *)
 
 TransmissionObject[a_Association]["Approximated k"] := With[{
   thickness = QuantityMagnitude[a["Thickness"], "Centimeters"],
@@ -203,7 +215,7 @@ TransmissionObject[a_Association]["Approximated n"] := With[{
   , {1/"Centimeters", 1}]
 ]
 
-
+(* :: FDCI Functions :: *)
 
 TransmissionObject[a_Association]["FrequencyDomainConfidenceInterval"] := TransmissionObject[a]["FDCI"]
 
@@ -222,7 +234,7 @@ With[{phase = QuantityMagnitude[TransmissionObject[a]["Phase"], {1/"Centimeters"
     ]
   ]
 
-
+(* :: internal :: *)
 
 phaseState[phase_List] := With[{},
   If[Fit[phase, {1, x}, x][[1]] > 10.0,
@@ -232,11 +244,16 @@ phaseState[phase_List] := With[{},
   ]
 ]
 
+(* :: Properties list :: *)
+
 TransmissionObject /: Keys[t_TransmissionObject] :=  t["Properties"]
 
 TransmissionObject[a_Association]["Properties"] := Join[Options[TransmissionObject][[All,1]], {"Properties", "n0", "Approximated n", "Approximated k", "Approximated \[Alpha]", "Kramers-Kronig n", "Frequencies", "Transmission", "Phase", "Phase Features", "\[Delta]t", "Gain", "PhaseShift", "Thickness", "Domain", "FrequencyDomainConfidenceInterval", "FDCI", "FDCI2", "FrequencyDomainConfidenceInterval2"}]
 
 Options[TransmissionObject] = {"Thickness"->Null, "Tags"-><||>, "Gain"->1.0, "PhaseShift"->0};
+
+
+(* :: Options validator :: *)
 
 TransmissionObject::invalidopts = "Invalid options provided"
 
@@ -253,6 +270,8 @@ validateOptions[OptionsPattern[] ] := With[{},
     Identity
   ]
 ]
+
+(* :: Automatic phase unwrapping :: *)
 
 TransmissionUnwrap[t: TransmissionObject[a_], "Basic" | Automatic, OptionsPattern[]] := With[{
   offset = offsetPhase[a],
@@ -275,6 +294,8 @@ TransmissionUnwrap[t: TransmissionObject[a_], "Basic" | Automatic, OptionsPatter
 
 Options[TransmissionUnwrap] = {"PhaseThreshold"->5.6, "PhaseShift"->0};
 
+
+(* :: Semi-automatic phase unwrapping :: *)
 
 TransmissionUnwrap[t: TransmissionObject[a_], "Held" | "Hold", OptionsPattern[]] := With[{
   th = OptionValue["PhaseThreshold"]//N,
