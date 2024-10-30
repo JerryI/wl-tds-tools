@@ -428,6 +428,30 @@ findFDCIRanges[mFp_MaterialParameters] :=
 
 
 
+MaterialParameters /: Snippet[m_MaterialParameters] := With[{
+  n = QuantityMagnitude[m["n"], {1/"Centimeters", 1}],
+  k = QuantityMagnitude[m["\[Alpha]"], {1/"Centimeters", 1/"Centimeters"}],
+  fdci = QuantityMagnitude[#, 1/"Centimeters"] &/@ m["FDCI"]
+},
+
+With[{
+  nPlot = ListLinePlot[
+    {#[[1]], Clip[#[[2]], {1,Infinity}]} &/@ Select[n, Function[item, item[[1]] > fdci[[1]] / E && item[[1]] < E fdci[[2]] ]], 
+    PlotRange->Full, Frame->True, FrameLabel->{"wavenumber (1/cm)", ""}
+  , PlotStyle->ColorData[97][2], Prolog->{
+    Opacity[0.2], Green, Rectangle[{fdci[[1]], Min[n[[All,2]]]}, {fdci[[2]], Max[n[[All,2]]]}]
+  }],
+  
+  kPlot = ListLinePlot[
+    {#[[1]], Clip[#[[2]], {-20,Infinity}]} &/@ Select[k, Function[item, item[[1]] > fdci[[1]] / E && item[[1]] < E fdci[[2]] ]], 
+    PlotRange->Full, Frame->True, FrameLabel->{"wavenumber (1/cm)", "absorption coefficient (1/cm)"}
+  , Prolog->{
+    Opacity[0.2], Green, Rectangle[{fdci[[1]], 0}, {fdci[[2]], Max[k[[All,2]]]}]
+  }]
+},
+  Panel[Row[{kPlot, nPlot}]]
+] ]
+
 
 End[]
 EndPackage[]

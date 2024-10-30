@@ -122,6 +122,33 @@ TransmissionObject[a_Association][prop_String] := If[!KeyExistsQ[a, prop],
   a[prop]
 ]
 
+
+(* :: Snippet :: *)
+TransmissionObject /: Snippet[m_TransmissionObject] := With[{
+  phase = QuantityMagnitude[m["Phase Features"], {1/"Centimeters", 1}],
+  transm = QuantityMagnitude[m["Transmission"], {1/"Centimeters", 1}],
+  fdci = QuantityMagnitude[#, 1/"Centimeters"] &/@ m["FDCI"]
+},
+
+With[{
+  phasePlot = ListLinePlot[
+    Select[phase, Function[item, item[[1]] < E fdci[[2]] ]], 
+    PlotRange->Full, Frame->True, FrameLabel->{"wavenumber (1/cm)", "Radians"}
+  , PlotStyle->ColorData[97][2], Prolog->{
+    Opacity[0.2], Green, Rectangle[{fdci[[1]], Min[phase[[All,2]]]}, {fdci[[2]], Max[phase[[All,2]]]}]
+  }],
+  
+  transmPlot = ListLinePlot[
+    {#[[1]], Clip[#[[2]], {0,1}]} &/@ Select[transm, Function[item, item[[1]] < E fdci[[2]] ]], 
+    PlotRange->Full, Frame->True, FrameLabel->{"wavenumber (1/cm)", "T"}
+  , Prolog->{
+    Opacity[0.2], Green, Rectangle[{fdci[[1]], -0.1}, {fdci[[2]], 1.1}]
+  }]
+},
+  Panel[Row[{transmPlot, phasePlot}]]
+] ]
+
+
 (* :: Calculated properties :: *)
 
 TransmissionObject[a_Association]["Kramers-Kronig n"] := With[{

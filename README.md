@@ -231,6 +231,16 @@ where `sign12` denotes the sign of a phase jump between parts, while `phaseJump1
 - `"PhaseThreshold"` : sets the treshold for a detector to remove `2Pi` jump. By the default is `5.6`
 - `"PhaseShift"` : overrides a constant phase offset parameter to be used later in material parameters extraction
 
+#### How to make a preview for a transmisstion object
+##### `Snippet`
+To show the quick preview of your data evalaute
+
+```mathematica
+Snippet[t_TransmissionObject]
+```
+
+![](./imgs/snippet1.png)
+
 
 ### Material Parameters ⤵️
 This the main goal of all optical spectroscopy: use EM waves to probe the responce function of the material to extract all useful properties. Here we focus on $n$ and $\kappa$ (or their derivatives).
@@ -291,6 +301,16 @@ All properties are *read-only*.
 - `"FDCI"` : a range of frequency-domain confidence interval. It is generated according to the powerspectrum and provides a coarse estimation of the working range in wavenumbers. This interval will be used later for optimizing material parameters. 
 - `"FDCI2"` : it serves the same purpose as `FDCI` (as a criteria parameter), but relies on the phase information. It cannot be with a wrapped phase. 
 - `"FPReduction"` : a quality factor of Fabry-Perot fringes reduction. `1.0` or close to it means the deconvolution procedure was not succesfull. The higher - the better.
+
+#### Preview the data
+Apply `Snippet` on your object to get a formatted preview
+
+```mathematica
+Snippet[m_MaterialParameters]
+```
+
+![](./imgs/snippet2.png)
+
 
 #### Optimizing parameters
 The main issue is inaccuracy in `"Thickness"` and `"Gain"`, which comes naturally in a measurements. In this case a slight misaligment can make your results look much worse, when `FabryPerotCancellation` is enabled.
