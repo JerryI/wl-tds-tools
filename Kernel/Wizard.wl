@@ -517,7 +517,7 @@ makeWidgetMaterials[t_TransmissionObject, fdci_, opts_, parent_, cbk_, meta_] :=
         "Done" -> InputButton["Proceed"],
         "Phase" -> InputRange[initialPhase-5, initialPhase+5, 1, initialPhase, "Label"->"Phase shift"],
         "Thickness" -> With[{h = initialThickness}, InputRange[0.7 h, 1.3 h, 0.01 h, h, "Label"->"Thickness"]],
-        "Gain" -> InputRange[0.3, 1.5, 0.01, initialGain, "Label"->"Gain"]
+        "Gain" -> InputRange[0.3, 1.5, 0.05, initialGain, "Label"->"Gain"]
     |>], Function[assoc,
 
       If[assoc["Done"],
