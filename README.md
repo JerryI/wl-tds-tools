@@ -202,7 +202,7 @@ it performs phase-unwrapping procedure on `t` object and returns a new `Transmis
 - `"Basic"` or `Automatic` : uses informed phase unwrapping based on a time-delay between the sample and the reference signals
 
 ###### Semi-automatic
-- `"Held"` : uses informed phase unwrapping based and returns a held expression with all phase shifts calculated for further modifications by a user.
+- `"Held"` or `"Hold"` or `"Manual"` : uses informed phase unwrapping based and returns a held expression with all phase shifts calculated for further modifications by a user.
 
 If `ReleaseHold` is applied the result will be the same as for `Automatic` type. To take advantage of held unwrapping, i.e. apply your adjustmenets to individual points you need to define a wrapper function. For example, this one will act like identity operation
 

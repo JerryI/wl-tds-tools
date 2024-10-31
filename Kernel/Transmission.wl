@@ -324,7 +324,7 @@ Options[TransmissionUnwrap] = {"PhaseThreshold"->5.6, "PhaseShift"->0};
 
 (* :: Semi-automatic phase unwrapping :: *)
 
-TransmissionUnwrap[t: TransmissionObject[a_], "Held" | "Hold", OptionsPattern[]] := With[{
+TransmissionUnwrap[t: TransmissionObject[a_], "Held" | "Hold" | "Manual", OptionsPattern[]] := With[{
   th = OptionValue["PhaseThreshold"]//N,
   phaseShift = OptionValue["PhaseShift"]
 },
