@@ -167,7 +167,7 @@ AppendTo[dump, Hold[{index, checkStack, results, PhaseThreshold}]];
 
 TDSWizard[TransmissionUnwrap, opts__][{t__TransmissionObject}] := Module[{results, index=1, checkStack, PhaseThreshold}, With[{
   parent = EvaluationCell[],
-  aopts = KeyDrop[Association[opts], Method] // Normal,
+  aopts = KeyDrop[Association[opts], {Method, "InheritParameters"}] // Normal,
   cpts  = Association[opts],
   stack = List[t],
   promise = Promise[],
@@ -256,7 +256,8 @@ automaicUnwrap[parent_, initialPhase_, fdci_, aopts_, t_, cbk_] :=
    
    With[{xMinMax = Global`phase[[All, 1]] // MinMax,
          yMinMax = Global`phase[[All, 2]] // MinMax,
-         initial = If[initialPhase =!= Null, initialPhase, "PhaseThreshold" /. aopts /. Options[TransmissionUnwrap] ]
+         initial = If[initialPhase =!= Null, initialPhase, "PhaseThreshold" /. aopts /. Options[TransmissionUnwrap] ],
+         kramer = QuantityMagnitude[t["Kramers-Kronig n"], {1/"Centimeters", 1}] // Re
        },
       
      cell = CellPrint[
@@ -288,7 +289,8 @@ automaicUnwrap[parent_, initialPhase_, fdci_, aopts_, t_, cbk_] :=
              {Green, Opacity[0.5], 
               Rectangle[{fdci[[1]], yMinMax[[1]]}, {E fdci[[2]], yMinMax[[2]]}]},
              ColorData[97][4], 
-             Line[Global`phase // Offload]
+             Line[Global`phase // Offload],
+             ColorData[97][7], Opacity[0.3], Line[kramer]
            }, PlotRange -> {xMinMax, yMinMax}, Frame -> True, FrameLabel -> {"wavenumber (1/cm)", "Radians"}]
          }], 
          Style["Phase unwrapping", 10]
@@ -326,7 +328,8 @@ assistedUnwrap[parent_, initialPhase_, fdci_, aopts_, t_, cbk_] :=
 
    With[{xMinMax = Global`phase[[All, 1]] // MinMax,
          yMinMax = Global`phase[[All, 2]] // MinMax,
-         initial = If[initialPhase =!= Null, initialPhase, "PhaseThreshold" /. aopts /. Options[TransmissionUnwrap] ]
+         initial = If[initialPhase =!= Null, initialPhase, "PhaseThreshold" /. aopts /. Options[TransmissionUnwrap] ],
+         kramer = QuantityMagnitude[t["Kramers-Kronig n"], {1/"Centimeters", 1}] // Re
        },
      
      EventHandler[
@@ -387,7 +390,8 @@ assistedUnwrap[parent_, initialPhase_, fdci_, aopts_, t_, cbk_] :=
              {Green, Opacity[0.3], 
               Rectangle[{fdci[[1]], yMinMax[[1]]}, {E fdci[[2]], yMinMax[[2]]}]},
              ColorData[97][4], 
-             Line[Global`phase // Offload]
+             Line[Global`phase // Offload],
+             ColorData[97][7], Opacity[0.3], Line[kramer]
            }, PlotRange -> {xMinMax, yMinMax}, Frame -> True, FrameLabel -> {"wavenumber (1/cm)", "Radians"}],
            
            EditorView[Global`jointsTable // Offload, "Event" -> updateEvent]
