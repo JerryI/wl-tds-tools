@@ -54,12 +54,12 @@ TDSWizard[TransmissionUnwrap, opts__][t_TransmissionObject] := With[{
 
 TDSWizard[TransmissionUnwrap, opts__][p_Promise] := With[{
   parent = EvaluationCell[],
-  fdci = QuantityMagnitude[#, 1/"Centimeters"] &/@ t["FDCI"],
   aopts = KeyDrop[Association[opts], {Method, "InheritParameters"}] // Normal,
   cpts  = Association[opts],
   phaseTh = If[NumericQ[#], #, 5.7] &@ ("PhaseThreshold" /. List[opts]),
   promise = Promise[]
 },
+
 
   Then[p, Function[input,
     If[input["Length"] == 1,
@@ -69,6 +69,8 @@ TDSWizard[TransmissionUnwrap, opts__][p_Promise] := With[{
         fdci = QuantityMagnitude[#, 1/"Centimeters"] &/@ (input["Object"]["FDCI"]),
         parent = input["Cell"]
       },
+        
+
         If[!KeyExistsQ[cpts, Method],
           automaicUnwrap[parent, Null, fdci, aopts, t, Function[object,
             CellPrint[ToString[object, StandardForm], "After" -> parent, "Type" -> "Output"];
@@ -165,7 +167,6 @@ AppendTo[dump, Hold[{index, checkStack, results, PhaseThreshold}]];
 
 TDSWizard[TransmissionUnwrap, opts__][{t__TransmissionObject}] := Module[{results, index=1, checkStack, PhaseThreshold}, With[{
   parent = EvaluationCell[],
-  fdci = QuantityMagnitude[#, 1/"Centimeters"] &/@ t["FDCI"],
   aopts = KeyDrop[Association[opts], Method] // Normal,
   cpts  = Association[opts],
   stack = List[t],
