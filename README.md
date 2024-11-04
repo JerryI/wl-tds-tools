@@ -13,7 +13,7 @@ A small library for high-precision material parameter extraction from time-domai
 - Fabry-Pérot deconvolution ⭐️
 - Informed Automatic / semi-automatic phase unwrapping
 - High precision / various approximation methods for $n$, $\kappa$, and $\alpha$ solving
-- GUI widgets (available only on WLJS Notebook platform) 🌟
+- GUI Helpers (available only on WLJS Notebook platform) 🌟
 - Works for both thin and thick samples
 - **GPU Acceleration** (OpenCL) ⭐️
 - Kramers-Kronig approximation of $n$ feature (if needed)
@@ -40,7 +40,7 @@ A set of widgets, which can help you to cure phase unwrapping and material param
 
 ![](./imgs/matcure.gif)
 
-See the [full video here](./imgs/wizard.mov)
+See the [full video here](./imgs/wizard.mov) 🎥
 
 ## Examples of processed TDS
 
