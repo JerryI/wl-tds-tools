@@ -13,6 +13,7 @@ A small library for high-precision material parameter extraction from time-domai
 - Fabry-Pérot deconvolution ⭐️
 - Informed Automatic / semi-automatic phase unwrapping
 - High precision / various approximation methods for $n$, $\kappa$, and $\alpha$ solving
+- GUI widgets (available only on WLJS Notebook platform) 🌟
 - Works for both thin and thick samples
 - **GPU Acceleration** (OpenCL) ⭐️
 - Kramers-Kronig approximation of $n$ feature (if needed)
@@ -25,6 +26,21 @@ A small library for high-precision material parameter extraction from time-domai
 ## See it in action! ⏱️
 [An online example](https://jerryi.github.io/wl-tds-tools/Basic.html) on how to work with it.
 
+
+## Time-Domain Wizard 🧙🏼‍♂️
+A set of widgets, which can help you to cure phase unwrapping and material parameters extraction in batch
+
+*available only for WLJS Notebook platform*
+
+### Phase cure
+
+![](./imgs/phasecure.gif)
+
+### Material parameters
+
+![](./imgs/matcure.gif)
+
+See the [full video here](./imgs/wizard.mov)
 
 ## Examples of processed TDS
 
@@ -67,6 +83,7 @@ We separate the toolbox into 3 contexts:
 - ``JerryI`TDSTools`Trace` `` : operates with raw time-traces.
 - `` JerryI`TDSTools`Transmission` `` : constructs transmission objects from sample and reference time-traces.
 - `` JerryI`TDSTools`Material` `` : extracts material parameters from transmission objects.
+- `` JerryI`TDSTools`Wizard` `` : sets of helper widgets.
 
 #### Notes on GPU Acceleration
 Test were performed on Mac Air M1 (2021), where 4 cores are used for CPU calculations
@@ -362,6 +379,85 @@ MaterialParameters[map[[All,3]], "Target"->"GPU"]
 this function will group them by `Phase` arrays (comparison by the internal reference will be used, no actual evaluation) and then feed to GPU with shared initial data.
 
 This also takes advantage of non-blocking execution model of OpenCL and loads all data at once.
+
+### Time-Domain Wizards
+The general interface is
+
+```mathematica
+TDSWizard[interface_, opts___][p_Promise | a_Association | traces__TDTrace | transmission__TransmissionObject] _Promise
+```
+
+It always returns `Promise`, which allows to chain different widgets together in a series
+
+#### Options
+- `InheritParameters` : default is `False`. Allows to memorize the previous parameters used and reuse them as an initial values for the rest of the batch
+- all other options inherited from `TDTrace`, `TransmissionObject` and `MaterialParameters`
+
+#### TransmissionObject interface
+There is a helper to set thickness (and possible tags in the future) and built a transmission object from two `TDTrace`s. For example
+
+```mathematica
+TDSWizard[TransmissionObject, "Thickness"->Quantity[100, "Micrometers"]][sample, reference];
+```
+
+or as array
+
+```mathematica
+{sample, reference} // TDSWizard[TransmissionObject, "Thickness"->Quantity[100, "Micrometers"]];
+```
+
+or as arrays of many pairs
+
+```mathematica
+{{sample, reference}, {sample, reference}} // TDSWizard[TransmissionObject, "Thickness"->Quantity[100, "Micrometers"], "InheritProperties"->True];
+```
+
+or as a association
+```mathematica
+{<|"Sample"->sample, "Reference"->reference|>, <|"Sample"->sample, "Reference"->reference|>} // TDSWizard[TransmissionObject, "Thickness"->Quantity[100, "Micrometers"], "InheritProperties"->True];
+```
+
+It returns an array, which can be passed into another wizard widget for the further processsing.
+
+#### TransmissionUnwrap interface
+Provides a widget and process the phase of the transmission. It can act in two modes provided by an option `Method`
+
+##### `Automatic`
+It uses a 1 pass algorithm detecting the changes, which exeed the given threshold (can be controlled on a widget panel) and adds `2Pi` or `-2Pi` to the rest (see `TransmissionUnwrap` section above). 
+
+##### `Manual`
+Acts in the same way as `Automatic`, but also allows manual edditing of the position of each branch. It helps to cure phase jumps observed on a very narrow lines.
+
+For example
+```mathematica
+transmission // TDSWizard[TransmissionUnwrap];
+```
+
+
+#### MaterialParameters interface
+It provides a widget, where you can tune thickness, gain and a global phase shift and see the changes immediately. It hevavily uses GPU for the live calculations.
+
+For example
+```mathematica
+transmission // TDSWizard[MaterialParameters];
+```
+
+
+#### Putting all together
+Using `Promise` as an input parameters, it is possible to chain those widgets
+
+```mathematica
+TDSWizard[TransmissionObject][sample, reference] // TDSWizard[TransmissionUnwrap] // TDSWizard[MaterialParameters];
+```
+
+it will print all data to new cells above the widget. You can also capture them using `Then`
+
+```mathematica
+Then[TDSWizard[TransmissionObject][sample, reference] // TDSWizard[TransmissionUnwrap] // TDSWizard[MaterialParameters], Function[results,
+  myResults = results;
+]]
+```
+
 
 
 ## Acknowledgments 💛
