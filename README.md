@@ -380,7 +380,19 @@ this function will group them by `Phase` arrays (comparison by the internal refe
 
 This also takes advantage of non-blocking execution model of OpenCL and loads all data at once.
 
+### Palette
+Shows all symbols used in the library (will be shown in a new window)
+
+```mathematica
+TDSPalette[]
+```
+
 ### Time-Domain Wizards
+
+```mathematica
+TDSWizard[]
+```
+
 The general interface is
 
 ```mathematica

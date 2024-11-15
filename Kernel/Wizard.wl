@@ -17,6 +17,89 @@ TDSWizard::usage = "TDSWizard"
 
 Begin["`Private`"]
 
+toStringHeld[expr_] := StringDrop[StringDrop[ToString[Hold[expr], InputForm], 5],-1]
+SetAttributes[toStringHeld, HoldFirst];
+
+TDSPalette := CellPrint[toStringHeld @ With[{parent = CurrentWindow["Origin"]},
+  {
+    {
+      EventHandler[InputButton["TDTrace"], Function[Null,
+      With[{selected = FrontFetchAsync[FrontEditorSelected["Get"], "Window"->parent]},
+        Then[selected, Function[string,
+          If[TrueQ[StringLength[StringTrim[string]] > 0],
+            FrontSubmit[FrontEditorSelected["Set", "TDTrace[QuantityArray["<>StringTrim[string]<>", {\"Picoseconds\", 1}]]"], "Window"->parent]
+          ,
+            FrontSubmit[FrontEditorSelected["Set", "TDTrace[QuantityArray[(*BB[*)(  )(*,*)(*\"1:eJxTTMoPSmNkYGAoZgESHvk5KRAeB5AILqnMSXXKr0hjgskHleakFnMBGU6JydnpRfmleSlpzDDlQe5Ozvk5+UVFDGDwwR6dwcAAAAHdFiw=\"*)(*]BB*), {\"Picoseconds\", 1}]]"], "Window"->parent]
+          ]
+        ]]
+      ]
+      
+    ]],
+      Item[" Transform list of tds-data to TDTrace", FontSize->8]
+    },
+    
+    {
+      EventHandler[InputButton["TransmissionObject"], Function[Null,
+      With[{selected = FrontFetchAsync[FrontEditorSelected["Get"], "Window"->parent]},
+        Then[selected, Function[string,
+            If[TrueQ[StringLength[StringTrim[string]] > 0],
+            FrontSubmit[FrontEditorSelected["Set", "TransmissionObject["<>StringTrim[string]<>", \"Thickness\"->Quantity[(*BB[*)( )(*,*)(*\"1:eJxTTMoPSmNkYGAoZgESHvk5KRAeB5AILqnMSXXKr0hjgskHleakFnMBGU6JydnpRfmleSlpzDDlQe5Ozvk5+UVFDGDwwR6dwcAAAAHdFiw=\"*)(*]BB*), \"Millimeters\"]]"], "Window"->parent]
+          ,
+            FrontSubmit[FrontEditorSelected["Set", "TransmissionObject[(*BB[*)(sample)(*,*)(*\"1:eJxTTMoPSmNkYGAoZgESHvk5KRAeB5AILqnMSXXKr0hjgskHleakFnMBGU6JydnpRfmleSlpzDDlQe5Ozvk5+UVFDGDwwR6dwcAAAAHdFiw=\"*)(*]BB*), (*BB[*)(reference)(*,*)(*\"1:eJxTTMoPSmNkYGAoZgESHvk5KRAeB5AILqnMSXXKr0hjgskHleakFnMBGU6JydnpRfmleSlpzDDlQe5Ozvk5+UVFDGDwwR6dwcAAAAHdFiw=\"*)(*]BB*), \"Thickness\"->Quantity[(*BB[*)( )(*,*)(*\"1:eJxTTMoPSmNkYGAoZgESHvk5KRAeB5AILqnMSXXKr0hjgskHleakFnMBGU6JydnpRfmleSlpzDDlQe5Ozvk5+UVFDGDwwR6dwcAAAAHdFiw=\"*)(*]BB*), \"Millimeters\"]]"], "Window"->parent]
+          ]
+        ]]
+      ]
+    ]],
+      Item[" Calculates transmission based on two TDTraces", FontSize->8]
+    },
+    
+    {
+      EventHandler[InputButton["TransmissionUnwrap"], Function[Null,
+      With[{selected = FrontFetchAsync[FrontEditorSelected["Get"], "Window"->parent]},
+        Then[selected, Function[string,
+          If[TrueQ[StringLength[StringTrim[string]] > 0],
+            FrontSubmit[FrontEditorSelected["Set", "TransmissionUnwrap["<>StringTrim[string]<>", \"Basic\"]"], "Window"->parent]
+          ,
+            FrontSubmit[FrontEditorSelected["Set", "TransmissionUnwrap[(*BB[*)(  )(*,*)(*\"1:eJxTTMoPSmNkYGAoZgESHvk5KRAeB5AILqnMSXXKr0hjgskHleakFnMBGU6JydnpRfmleSlpzDDlQe5Ozvk5+UVFDGDwwR6dwcAAAAHdFiw=\"*)(*]BB*), \"Basic\"]"], "Window"->parent]
+          ]
+        ]]
+      ]
+    ]],
+      Item[" Unwraps phase of transmission", FontSize->8]
+    },
+    
+    {
+      EventHandler[InputButton["MaterialParameters"], Function[Null,
+      With[{selected = FrontFetchAsync[FrontEditorSelected["Get"], "Window"->parent]},
+        Then[selected, Function[string,
+          If[TrueQ[StringLength[StringTrim[string]] > 0], 
+            FrontSubmit[FrontEditorSelected["Set", "MaterialParameters["<>StringTrim[string]<>"]"], "Window"->parent]
+          ,
+            FrontSubmit[FrontEditorSelected["Set", "MaterialParameters[(*BB[*)(  )(*,*)(*\"1:eJxTTMoPSmNkYGAoZgESHvk5KRAeB5AILqnMSXXKr0hjgskHleakFnMBGU6JydnpRfmleSlpzDDlQe5Ozvk5+UVFDGDwwR6dwcAAAAHdFiw=\"*)(*]BB*)]"], "Window"->parent]
+           ]
+        ]]
+        ]
+      ]],
+      Item[" Calculates material parameters from transmission", FontSize->8]
+    },
+    
+    {
+      EventHandler[InputButton["TDSWizard"], Function[Null,
+      FrontSubmit[FrontEditorSelected["Set", "TDSWizard[]"], "Window"->parent]
+    ]],
+      Item[" Helper widgets", FontSize->8]
+    }
+  } // Grid
+], "Target"->_];
+
+TDSWizard[] := Column[Join[
+    {Item["The following options are available:", FontSize->10, Background->LightGreen ]},
+    Table[Item["TDSWizard["<>SymbolName[i]<>"][...]", FontSize->10], {i, {
+      TransmissionObject,
+      TransmissionUnwrap,
+      MaterialParameters
+    }}]
+] ]
 
 TDSWizard[TransmissionUnwrap][t_TransmissionObject] := TDSWizard[TransmissionUnwrap, Method->Automatic][t]
 TDSWizard[TransmissionUnwrap][{t__TransmissionObject}] := TDSWizard[TransmissionUnwrap, Method->Automatic][{t}]
