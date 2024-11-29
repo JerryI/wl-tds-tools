@@ -10,11 +10,12 @@ BeginPackage["JerryI`TDSTools`Wizard`", {
   "JerryI`Misc`Async`",
   "JerryI`Misc`WLJS`Transport`",
   "Notebook`Editor`Boxes`",
-  "Notebook`EditorUtils`"
+  "Notebook`EditorUtils`",
+  "Notebook`Editor`Kernel`FrontSubmitService`"
 }]
 
 TDSWizard::usage = "TDSWizard"
-TDSPalette::usage = "Open a palette"
+TDSPalette::usage = "TDSPalette opens a palette"
 
 Begin["`Private`"]
 
