@@ -14,6 +14,7 @@ BeginPackage["JerryI`TDSTools`Wizard`", {
 }]
 
 TDSWizard::usage = "TDSWizard"
+TDSPalette::usage = "Open a palette"
 
 Begin["`Private`"]
 
