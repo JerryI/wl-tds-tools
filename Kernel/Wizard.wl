@@ -22,7 +22,7 @@ Begin["`Private`"]
 toStringHeld[expr_] := StringDrop[StringDrop[ToString[Hold[expr], InputForm], 5],-1]
 SetAttributes[toStringHeld, HoldFirst];
 
-TDSPalette := CellPrint[toStringHeld @ With[{parent = CurrentWindow["Origin"]},
+TDSPalette := With[{cell = CellPrint[toStringHeld @ With[{parent = CurrentWindow["Origin"]},
   {
     {
       EventHandler[InputButton["TDTrace"], Function[Null,
@@ -92,7 +92,11 @@ TDSPalette := CellPrint[toStringHeld @ With[{parent = CurrentWindow["Origin"]},
       Item[" Helper widgets", FontSize->8]
     }
   } // Grid
-], "Target"->_];
+], "Target"->_]},
+  EventHandler[CurrentWindow["Origin"], {"Closed" -> Function[Null,
+    Delete[cell];
+  ]}];
+];
 
 TDSWizard[] := Column[Join[
     {Item["The following options are available:", FontSize->10, Background->LightGreen ]},
