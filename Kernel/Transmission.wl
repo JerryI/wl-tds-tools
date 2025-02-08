@@ -218,7 +218,7 @@ TransmissionObject[a_Association]["Approximated k"] := With[{
   gain = a["Gain"]
 },
   QuantityArray[
-    Join[{0, 0}, {#[[1]], - 0.159152 Log[#[[2]] gain ] / (#[[1]] thickness) } &/@ Drop[Transpose[Normal /@ {a["Frequencies"], a["T"]}], 1] ]
+    Join[{{0, 0}}, {#[[1]], - 0.159152 Log[#[[2]] gain ] / (#[[1]] thickness) } &/@ Drop[Transpose[Normal /@ {a["Frequencies"], a["T"]}], 1] ]
   , {1/"Centimeters", 1}]
 ]
 
@@ -227,7 +227,7 @@ TransmissionObject[a_Association]["Approximated \[Alpha]"] := With[{
   gain = a["Gain"]
 },
   QuantityArray[
-    Join[{0, 0}, {#[[1]], ((- 0.159152 Log[#[[2]] gain ] / (#[[1]] thickness)) 4 \[Pi]  10^12 #[[1]])/(33.356 2.9979 10^10)} &/@ Drop[Transpose[Normal /@ {a["Frequencies"], a["T"]}], 1] ]
+    Join[{{0, 0}}, {#[[1]], ((- 0.159152 Log[#[[2]] gain ] / (#[[1]] thickness)) 4 \[Pi]  10^12 #[[1]])/(33.356 2.9979 10^10)} &/@ Drop[Transpose[Normal /@ {a["Frequencies"], a["T"]}], 1] ]
   , {1/"Centimeters", 1/"Centimeters"}]
 ]
 
@@ -238,7 +238,7 @@ TransmissionObject[a_Association]["Approximated n"] := With[{
   n0 = a["n0"]
 },
   QuantityArray[
-    Join[{0, n0}, {#[[1]], 1.0 + 0.159152 (#[[2]] + shift) / (#[[1]] thickness) } &/@ Drop[Transpose[Normal /@ {a["Frequencies"], a["Phase"]}],1] ]
+    Join[{{0, n0}}, {#[[1]], 1.0 + 0.159152 (#[[2]] + shift) / (#[[1]] thickness) } &/@ Drop[Transpose[Normal /@ {a["Frequencies"], a["Phase"]}],1] ]
   , {1/"Centimeters", 1}]
 ]
 
