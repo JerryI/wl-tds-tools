@@ -4,6 +4,11 @@ Begin["`Private`"]
 root = DirectoryName[$InputFileName];
 clFile = FileNameJoin[{root, "nGPU.cl"}];
 
+clReadyQ = OpenCLQ;
+clLoad = OpenCLMemoryLoad;
+clUnload = OpenCLMemoryUnload;
+clGet = OpenCLMemoryGet;
+
 If[!(compiledQ // TrueQ) && OpenCLQ[], Module[{},
   Print[Style["TDTools`nGPU >> Compiling to OpenCL", Italic] ];
 
@@ -30,5 +35,9 @@ EndPackage[]
 
 {
   JerryI`TDSTools`nGPU`Private`clRun, 
-  JerryI`TDSTools`nGPU`Private`clusterPhase
+  JerryI`TDSTools`nGPU`Private`clusterPhase,
+  JerryI`TDSTools`nGPU`Private`clReadyQ,
+  JerryI`TDSTools`nGPU`Private`clLoad,
+  JerryI`TDSTools`nGPU`Private`clUnload,
+  JerryI`TDSTools`nGPU`Private`clGet
 }
