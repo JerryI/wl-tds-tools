@@ -54,7 +54,7 @@ cget = LibraryFunctionLoad[
  lib,  "get", 
  {  
    Integer
- }, {Real, _, "Shared"}]
+ }, {Real, _, Automatic}]
 
  crun = LibraryFunctionLoad[
  lib,  "run", 
@@ -72,7 +72,7 @@ cget = LibraryFunctionLoad[
    Integer
  }, Integer]
 
-load[dat_, _] :=  cload[dat] // llObject; 
+load[dat_, _] :=  cload[ dat ] // llObject; 
 
 unload[llObject[uid_] ] := cunload[uid]; 
 

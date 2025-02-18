@@ -293,7 +293,7 @@ materialParameters[l: List[__TransmissionObject], "Slab", "GPU", opts: OptionsPa
           },
             AppendTo[dump, src];
             AppendTo[dump, dest];
-            AppendTo[dump, meta // Last];
+            AppendTo[dump, meta];
 
             materialParameters[group, dest, src, meta, {Length[freqs], Length[group]}, "Slab", "GPU", opts]
           ]
@@ -330,8 +330,7 @@ materialParameters[l: List[__TransmissionObject], "Slab", "CPU", opts: OptionsPa
             ]
           },
             AppendTo[dump, src];
-            AppendTo[dump, dest];
-            AppendTo[dump, meta // Last];
+            AppendTo[dump, meta];
 
             materialParameters[group, dest, src, meta, {Length[freqs], Length[group]}, "Slab", "CPU", opts]
           ]
@@ -340,6 +339,7 @@ materialParameters[l: List[__TransmissionObject], "Slab", "CPU", opts: OptionsPa
 
           With[{computed = ReleaseHold /@ results},
             llUnload /@ dump;
+
             ClearAll[dump];
 
             Flatten[computed, 1]
@@ -433,6 +433,7 @@ materialParameters[list: List[__TransmissionObject], destCl_, srcCl_, metaCl_, {
  ]
 },
 
+
   llRun[destCl, srcCl, metaCl, itemSize, groupSize, NKCycles, MovingAverageFilter,  FabryPerotCycles, groupSize 256];
 
 
@@ -445,6 +446,7 @@ materialParameters[list: List[__TransmissionObject], destCl_, srcCl_, metaCl_, {
     With[{
       memory = (Transpose[ Partition[#, 5] ] &/@ Partition[llGet[destCl], 5 partition])
     },
+    
       MapIndexed[Function[{item, itemSection}, With[{
         itemNumber = itemSection[[1]],
         dt = QuantityMagnitude[item[[1, "\[Delta]t"]], "Picoseconds"] // N,

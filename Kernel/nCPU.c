@@ -1,13 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "WolframLibrary.h"
 #include "WolframNumericArrayLibrary.h"
 
 
 #include <math.h>
-#include <stdlib.h>
 
 #define GROUPSIZE 256
 
@@ -83,7 +81,7 @@ void solveFP( //cancel reflections
     }
 }
 
-void  savekValues(
+void savekValues(
    double *dest, 
   mint size,
   int group_id,
@@ -99,7 +97,7 @@ void  savekValues(
 }
 
 void  movingAverage(
-   double *dest, 
+  double *dest, 
   mint kernelsize,
   mint size,
   int group_id,
@@ -107,18 +105,19 @@ void  movingAverage(
 ) { //Average n and k-values
     
     for (int k=0; k<cycles; ++k) {
-        const int work_item_id = group_id + GROUPSIZE * k;
-        if (work_item_id >= size - kernelsize) continue;
+        int work_item_id = group_id + GROUPSIZE * k;
+        if (work_item_id >= size - kernelsize  || work_item_id < 4) continue;
 
-        double accumulatorN = 0.0f;
-        double accumulatorK = 0.0f;
-        for (int u=0; u<kernelsize; ++u) {
+        double accumulatorN = 0.0;
+        double accumulatorK = 0.0;
+
+        for (int u=0; u<kernelsize; u++) {
             accumulatorN = accumulatorN + dest[5*(work_item_id+u) + 0];
             accumulatorK = accumulatorK + dest[5*(work_item_id+u) + 1];
         }
 
         dest[5*work_item_id] = (accumulatorN) / ((double)kernelsize);
-        dest[5*work_item_id + 1] = (accumulatorK) / ((double)kernelsize);        
+        dest[5*work_item_id + 1] = (accumulatorK) / ((double)kernelsize);    
     }
 }
 
@@ -230,32 +229,32 @@ void clRun(
    double *dest, 
    double *src, 
    double *meta,
-  mint itemSize,
-  mint groupSize,
-  mint iterationsNK,
-  mint movAvg,
-  mint iterationsFP,
+  int itemSize,
+  int groupSize,
+  int iterationsNK,
+  int movAvg,
+  int iterationsFP,
   int sid,
   int group_id
 ) {
     //int sid = get_group_id(0);
 
     //int group_id = get_local_id(0);
-    int cycles = (int)ceil(((double)itemSize)/((double)GROUPSIZE));
+    int cycles = (int)ceil(((float)itemSize)/((float)GROUPSIZE));
 
 
      double *localDest = &dest[sid * (itemSize * 5)];
      double *localMeta = &meta[sid * 5];
 
-    initialize(localDest, src, localMeta, itemSize, group_id, cycles);
-    solveNK(localDest, src, localMeta, itemSize, iterationsNK, group_id, cycles);
-    movingAverage(localDest, movAvg+1, itemSize, group_id, cycles);
-    savekValues(localDest, itemSize, group_id, cycles);
+    for (int lid=0; lid < GROUPSIZE; ++lid) initialize(localDest, src, localMeta, itemSize, lid, cycles);
+    for (int lid=0; lid < GROUPSIZE; ++lid) solveNK(localDest, src, localMeta, itemSize, iterationsNK, lid, cycles);
+    for (int lid=0; lid < GROUPSIZE; ++lid) movingAverage(localDest, movAvg+1, itemSize, lid, cycles);
+    for (int lid=0; lid < GROUPSIZE; ++lid) savekValues(localDest, itemSize, lid, cycles);
 
     for (int h=0; h<iterationsFP; ++h) {
-        solveFP(localDest, src, localMeta, itemSize, group_id, cycles);
-        solveNK(localDest, src, localMeta, itemSize, iterationsNK, group_id, cycles);
-        movingAverage(localDest, movAvg+1, itemSize, group_id, cycles);
+        for (int lid=0; lid < GROUPSIZE; ++lid) solveFP(localDest, src, localMeta, itemSize, lid, cycles);
+        for (int lid=0; lid < GROUPSIZE; ++lid) solveNK(localDest, src, localMeta, itemSize, iterationsNK, lid, cycles);
+        for (int lid=0; lid < GROUPSIZE; ++lid) movingAverage(localDest, movAvg+1, itemSize, lid, cycles);
     }
 
 } 
@@ -281,13 +280,13 @@ DLLEXPORT int run(WolframLibraryData libData, mint Argc, MArgument *Args, MArgum
     int err = LIBRARY_NO_ERROR;
    
     mint address_dest = MArgument_getInteger(Args[0]);
-    MTensor *ptr_dest = (MTensor*)address_dest;
+    double *dest = libData->MTensor_getRealData(*((MTensor*)address_dest));
 
     mint address_src = MArgument_getInteger(Args[1]);
-    MTensor *ptr_src = (MTensor*)address_src;    
+    double *src = libData->MTensor_getRealData(*((MTensor*)address_src));    
 
     mint address_meta = MArgument_getInteger(Args[2]);
-    MTensor *ptr_meta = (MTensor*)address_meta;    
+    double *meta = libData->MTensor_getRealData(*((MTensor*)address_meta));    
     
     mint itemSize = MArgument_getInteger(Args[3]);
     mint groupSize = MArgument_getInteger(Args[4]);
@@ -298,10 +297,13 @@ DLLEXPORT int run(WolframLibraryData libData, mint Argc, MArgument *Args, MArgum
     mint totalRunners = MArgument_getInteger(Args[8]);
 
     for (int sid=0; sid < groupSize; ++sid) {
-        for (int lid=0; lid < GROUPSIZE; ++lid) {
-            clRun(libData->MTensor_getRealData((*ptr_dest)), libData->MTensor_getRealData((*ptr_src)), libData->MTensor_getRealData((*ptr_meta)), itemSize, groupSize, iterationsNK, movAvg, iterationsFP, sid, lid);
-        }
+        // {
+            
+            clRun(dest, src, meta, itemSize, groupSize, iterationsNK, movAvg, iterationsFP, sid, 0);
+        //}
     }
+
+    MArgument_setInteger(Res, 0);
 
     return err;
 }
@@ -337,8 +339,11 @@ DLLEXPORT int unload(WolframLibraryData libData, mint Argc, MArgument *Args, MAr
    
     mint address = MArgument_getInteger(Args[0]);
     MTensor *ptr = (MTensor*)address;
-    libData->MTensor_disownAll(*ptr);
+    //libData->MTensor_disownAll(*ptr);
+    libData->MTensor_free(*ptr);
     free(ptr);
+
+    MArgument_setInteger(Res, 0);
 
     return err;
 }
