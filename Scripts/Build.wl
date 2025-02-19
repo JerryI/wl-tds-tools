@@ -3,17 +3,6 @@
 Get["CCompilerDriver`"]; 
 Get["LibraryLink`"];
 
-Echo[$CCompiler];
-Echo[CCompilers[Full]];
-
-Needs["CCompilerDriver`GenericCCompiler`"]
-$CCompiler={"Compiler"->GenericCCompiler,
-        "CompilerInstallation"->"/usr/bin",
-        "CompilerName"->"gcc"};
-
-CCompilers[Full]  = {{"Compiler"->GenericCCompiler,
-        "CompilerInstallation"->"/usr/bin",
-        "CompilerName"->"gcc"}}   ;    
 
 
 getLibraryLinkVersion[] := 
@@ -60,10 +49,7 @@ Block[{$directory, $libSrc, $libDir, $linkerOptions},
     CreateLibrary[$libSrc, lib, 
         "TargetDirectory" -> $libDir, 
         "Debug" -> True, 
-        "ShellOutputFunction"->Print,
-        "Compiler"->GenericCCompiler,
-        "CompilerInstallation"->"/bin",
-        "CompilerName"->"gcc",
+        "ShellOutputFunction"->Print
         opts
     ]
 ]; 
