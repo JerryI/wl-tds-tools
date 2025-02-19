@@ -62,7 +62,7 @@ Block[{$directory, $libSrc, $libDir, $linkerOptions},
         "Debug" -> True, 
         "ShellOutputFunction"->Print,
         "Compiler"->GenericCCompiler,
-        "CompilerInstallation"->"/usr/bin",
+        "CompilerInstallation"->"/bin",
         "CompilerName"->"gcc",
         opts
     ]
