@@ -1,4 +1,10 @@
 BeginPackage["JerryI`TDSTools`nCPULL`"]
+
+load;
+unload;
+get;
+run;
+
 Begin["`Private`"]
 
 
@@ -84,11 +90,3 @@ run[llObject[d_], llObject[s_], llObject[m_], rest__] := crun[d,s,m,rest]
 End[]
 EndPackage[]
 
-{
-  JerryI`TDSTools`nCPULL`Private`run, 
-  JerryI`TDSTools`nCPULL`Private`clusterPhase,
-  JerryI`TDSTools`nCPULL`Private`clReadyQ,
-  JerryI`TDSTools`nCPULL`Private`load,
-  JerryI`TDSTools`nCPULL`Private`unload,
-  JerryI`TDSTools`nCPULL`Private`get
-}
