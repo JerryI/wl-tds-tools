@@ -4,10 +4,16 @@ Get["CCompilerDriver`"];
 Get["LibraryLink`"];
 
 Echo[$CCompiler];
-Echo[CCompilers[]];
+Echo[CCompilers[Full]];
 
+Needs["CCompilerDriver`GenericCCompiler`"]
+$CCompiler={"Compiler"->GenericCCompiler,
+        "CompilerInstallation"->"/usr/bin",
+        "CompilerName"->"gcc"};
 
-
+CCompilers[Full]  = {{"Compiler"->GenericCCompiler,
+        "CompilerInstallation"->"/usr/bin",
+        "CompilerName"->"gcc"}}   ;    
 
 
 getLibraryLinkVersion[] := 
