@@ -12,8 +12,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
     - name: Run Wolfram script
-      uses: miRoox/wolfram-action@master
+      uses: rlalik/setup-cpp-compiler@master, miRoox/wolfram-action@master
       with:
+        compiler: latest
         file: Scripts/Build.wl
       env:
         WOLFRAM_ID: ${{ secrets.WolframID }}
