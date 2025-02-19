@@ -1,3 +1,5 @@
+#!/usr/bin/env wolframscript
+
 Get["CCompilerDriver`"]; 
 Get["LibraryLink`"];
 
@@ -50,3 +52,5 @@ Block[{$directory, $libSrc, $libDir, $linkerOptions},
 ]; 
 
 build["nCPU"];
+
+Print["Finished! Yo"];
