@@ -15,6 +15,10 @@ jobs:
       uses: rlalik/setup-cpp-compiler@master
       with:
         compiler: latest
+    - name: GCCCHeck
+      run: | 
+        printf "hey"
+        which gcc
     - name: Run Wolfram script
       uses: miRoox/wolfram-action@master
       with:
