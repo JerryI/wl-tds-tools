@@ -3,6 +3,11 @@
 Get["CCompilerDriver`"]; 
 Get["LibraryLink`"];
 
+Echo[$CCompiler];
+Echo[CCompilers[]];
+
+$CCompiler = Last[CCompilers[]];
+
 getLibraryLinkVersion[] := 
 Which[
     $VersionNumber >= 14.1, 
