@@ -17,8 +17,8 @@ jobs:
         compiler: latest
     - name: GCCCHeck
       run: | 
-        printf "hey"
-        which gcc
+        printf "hey\n"
+        type -a gcc
     - name: Run Wolfram script
       uses: miRoox/wolfram-action@master
       with:
