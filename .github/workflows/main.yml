@@ -11,10 +11,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Run Wolfram script
-      uses: rlalik/setup-cpp-compiler@master, miRoox/wolfram-action@master
+    - name: GCC
+      uses: rlalik/setup-cpp-compiler@master
       with:
         compiler: latest
+    - name: Run Wolfram script
+      uses: miRoox/wolfram-action@master
+      with:
         file: Scripts/Build.wl
       env:
         WOLFRAM_ID: ${{ secrets.WolframID }}
