@@ -276,11 +276,3 @@ If[!(compiledQ // TrueQ),
 End[]
 EndPackage[]
 
-{
-  JerryI`TDSTools`nCPU`Private`initialize, 
-  JerryI`TDSTools`nCPU`Private`solveNK, 
-  JerryI`TDSTools`nCPU`Private`solveFP, 
-  JerryI`TDSTools`nCPU`Private`movingAverage,
-  JerryI`TDSTools`nCPU`Private`saveForDebug,
-  JerryI`TDSTools`nCPU`Private`clusterPhase
-}

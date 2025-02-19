@@ -1,8 +1,7 @@
 BeginPackage["JerryI`TDSTools`Material`", {
   "JerryI`TDSTools`Utils`",
   "JerryI`TDSTools`Trace`",
-  "JerryI`TDSTools`Transmission`",
-  "OpenCLLink`"
+  "JerryI`TDSTools`Transmission`"
 }]
 
 MaterialParameters::usage = "TransmissionObject[sam_TDTrace, ref_TDTrace, opts___] creates a transmission from sample and reference traces. See _TransmissionObject[\"Properties\"]"
@@ -11,19 +10,10 @@ Begin["`Private`"]
 
 root = DirectoryName[$InputFileName];
 
-{ 
-  initialize, 
-  solveNK, 
-  solveFP, 
-  movingAverage,
-  saveForDebug,
-  clusterPhase
-} = Get[ FileNameJoin[{root, "nCPU.wl"}] ];
 
-{ 
-  clRun,
-  clclusterPhase
-} = Get[ FileNameJoin[{root, "nGPU.wl"}] ];
+Needs["JerryI`TDSTools`nGPU`" -> "cl`", FileNameJoin[{root, "nGPU.wl"}] ];
+Needs["JerryI`TDSTools`nCPULL`" -> "ll`", FileNameJoin[{root, "nCPULL.wl"}] ];
+
 
 Options[MaterialParameters] = {"Target"->"CPU", "Tags"-><||>, "Model"->"Slab", "SolveNKEquations"->True, "MovingAverageFilter"->True, "FabryPerotCancellation"->True, "FabryPerotCycles"->8, "NKCycles"->30};
 Options[materialParameters] = Join[Options[MaterialParameters], {"sharedSrcQ" -> False, "sharedSrc"->Null}];
@@ -255,14 +245,13 @@ validateOptions[OptionsPattern[] ] := With[{},
   ]
 ]
 
-materialParameters[t_List, type_, "CPU", opts: OptionsPattern[]] := materialParameters[#, type, "CPU", opts] &/@ t
 
 MaterialParameters::badgpu = "GPU acceleration is not available. Reason: ``";
 
 materialParameters[l: List[__TransmissionObject], "Slab", "GPU", opts: OptionsPattern[] ] := Module[{dump = {}},
-  If[!OpenCLQ[], 
+  If[!cl`readyQ[], 
     Message[MaterialParameters::badgpu, "OpenCLQ[] returned False. Fallback to CPU"];
-    materialParameters[#, "Slab", "CPU", opts] &/@ l
+    materialParameters[l, "Slab", "CPU", opts]
   ,
     
     (* Group them by Phase (to avoid copying) *)
@@ -274,15 +263,15 @@ materialParameters[l: List[__TransmissionObject], "Slab", "GPU", opts: OptionsPa
           freqs = Normal[group[[1,1, "Frequencies"]] ]
         },
           With[{ (* take the first one only, cuz it will be the same for the rest *)
-            src = OpenCLMemoryLoad[Transpose[{freqs, Normal[group[[1, 1, "T"]] ], Normal[group[[1, 1,"Phase"]] ]}] // Flatten, "Float"],
-            dest = OpenCLMemoryLoad[Table[0., {Length[freqs] 5 Length[group] }], "Float"],
+            src = cl`load[Transpose[{freqs, Normal[group[[1, 1, "T"]] ], Normal[group[[1, 1,"Phase"]] ]}] // Flatten, "Float"],
+            dest = cl`load[Table[0., {Length[freqs] 5 Length[group] }], "Float"],
             meta = With[{rawMeta = generateMeta /@ group},
-              OpenCLMemoryLoad[rawMeta // Flatten, "Float"]
+              cl`load[rawMeta // Flatten, "Float"]
             ]
           },
             AppendTo[dump, src];
             AppendTo[dump, dest];
-            AppendTo[dump, meta // Last];
+            AppendTo[dump, meta];
 
             materialParameters[group, dest, src, meta, {Length[freqs], Length[group]}, "Slab", "GPU", opts]
           ]
@@ -290,7 +279,7 @@ materialParameters[l: List[__TransmissionObject], "Slab", "GPU", opts: OptionsPa
       ], groups]},
 
           With[{computed = ReleaseHold /@ results},
-            OpenCLMemoryUnload /@ dump;
+            cl`unload /@ dump;
             ClearAll[dump];
 
             Flatten[computed, 1]
@@ -302,53 +291,44 @@ materialParameters[l: List[__TransmissionObject], "Slab", "GPU", opts: OptionsPa
   ]
 ]
 
-materialParameters[TransmissionObject[a_], "Slab", "CPU", opts: OptionsPattern[]] := Module[{packed, src, dest}, With[{
- thickness = QuantityMagnitude[a["Thickness"], "Centimeters"] // N,
- \[Delta]t = QuantityMagnitude[a["\[Delta]t"], "Picoseconds"] // N,
- freqs = Normal[a["Frequencies"]],
- fpIterations = If[OptionValue["FabryPerotCancellation"] === True, 
-   OptionValue["FabryPerotCycles"],
-   0
- ]
-},
+materialParameters[l: List[__TransmissionObject], "Slab", "CPU", opts: OptionsPattern[] ] := Module[{dump = {}},
+    (* Group them by Phase (to avoid copying) *)
+    With[{groups = SplitBy[l, Function[item,
+      item[[1]]["Phase"]
+    ] ]},
+      With[{ results = Map[Function[group,
+        With[{
+          freqs = Normal[group[[1,1, "Frequencies"]] ]
+        },
+          With[{ (* take the first one only, cuz it will be the same for the rest *)
+            src = ll`load[Transpose[{freqs, Normal[group[[1, 1, "T"]] ], Normal[group[[1, 1,"Phase"]] ]}] // Flatten, "Float"],
+            dest = ll`load[Table[0., {Length[freqs] 5 Length[group] }], "Float"],
+            meta = With[{rawMeta = generateMeta /@ group},
+              ll`load[rawMeta // Flatten, "Float"]
+            ]
+          },
+            AppendTo[dump, src];
+            AppendTo[dump, meta];
 
-  With[{
-    src = Transpose[{freqs, Normal[a["T"]], Normal[a["Phase"]]}] // Flatten
-  },
-    (* dest = Transpose[{Array[0.0&, Length[freqs]], Array[0.0&, Length[freqs]]}] // Flatten; *)
-    
-    meta = {\[Delta]t, thickness, 1.0 a["Gain"], 2Pi Round[a["PhaseShift"]] // N, Length[freqs]};
+            materialParameters[group, dest, src, meta, {Length[freqs], Length[group]}, "Slab", "CPU", opts]
+          ]
+        ]
+      ], groups]},
 
-    dest = initialize[src, meta];
-    dest = solveNK[src, dest, meta, If[!OptionValue["SolveNKEquations"], 0, OptionValue["NKCycles"]]];
-    If[OptionValue["MovingAverageFilter"], dest = movingAverage[src, dest, meta] ];
-    dest = saveForDebug[dest, meta];
-    
-    Do[
-      dest = solveFP[src, dest, meta, 0]; 
-      dest = solveNK[src, dest, meta, If[!OptionValue["SolveNKEquations"], 0, OptionValue["NKCycles"]]];
-      If[OptionValue["MovingAverageFilter"], dest = movingAverage[src, dest, meta] ];
-    , {fpIterations}];
+          With[{computed = ReleaseHold /@ results},
+            ll`unload /@ dump;
 
-    dest = Partition[dest,5] // Transpose;
+            ClearAll[dump];
 
-    MaterialParameters[<|
-      "n0" -> 1.0 + (0.029979 meta[[1]] / meta[[2]]),
-      "n" -> NumericArray[dest[[1]]],
-      "k" -> NumericArray[dest[[2]]],
-      "T" -> NumericArray[dest[[3]]],
-      "k debug" -> NumericArray[dest[[5]]],
-      "Phase" -> NumericArray[dest[[4]]],
-      "Frequencies" -> NumericArray[a["Frequencies"]],
-      "Thickness" -> a["Thickness"],
-      "Gain" -> a["Gain"],
-      "FDCI" -> a["FDCI"],
-      "PhaseShift" -> a["PhaseShift"],
-      "Date" -> Now,
-      "Tags" -> Join[a["Tags"], OptionValue["Tags"]]
-    |>]
-  ]
-]]
+            Flatten[computed, 1]
+          ]
+
+        
+    ]
+    ]
+]
+
+
 
 
 generateMeta[t: TransmissionObject[a_] ] := With[{
@@ -376,7 +356,7 @@ materialParameters[list: List[__TransmissionObject], destCl_, srcCl_, metaCl_, {
  ]
 },
 
-  clRun[destCl, srcCl, metaCl, itemSize, groupSize, NKCycles, MovingAverageFilter,  FabryPerotCycles, groupSize 256];
+  cl`run[destCl, srcCl, metaCl, itemSize, groupSize, NKCycles, MovingAverageFilter,  FabryPerotCycles, groupSize 256];
 
 
 
@@ -386,8 +366,65 @@ materialParameters[list: List[__TransmissionObject], destCl_, srcCl_, metaCl_, {
     partition = itemSize
   }, Hold[
     With[{
-      memory = (Transpose[ Partition[#, 5] ] &/@ Partition[OpenCLMemoryGet[destCl], 5 partition])
+      memory = (Transpose[ Partition[#, 5] ] &/@ Partition[cl`get[destCl], 5 partition])
     },
+      MapIndexed[Function[{item, itemSection}, With[{
+        itemNumber = itemSection[[1]],
+        dt = QuantityMagnitude[item[[1, "\[Delta]t"]], "Picoseconds"] // N,
+        thickness = QuantityMagnitude[item[[1, "Thickness"]], "Centimeters"] // N
+      },
+        MaterialParameters[<|
+            "n0" -> 1.0 + (0.029979 dt / thickness),
+            "n" -> NumericArray[memory[[itemNumber, 1]]],
+            "k" -> NumericArray[memory[[itemNumber, 2]]],
+            "T" -> NumericArray[memory[[itemNumber, 3]]],
+            "k debug" -> NumericArray[memory[[itemNumber, 5]]],
+            "Phase" -> NumericArray[memory[[itemNumber, 4]]],
+            "Frequencies" -> item[[1, "Frequencies"]],
+            "Thickness" -> item[[1, "Thickness"]],
+            "Gain" -> item[[1, "Gain"]],
+            "FDCI" -> item[[1, "FDCI"]],
+            "PhaseShift" -> item[[1, "PhaseShift"]],
+            "Date" -> Now,
+            "Tags" -> Join[item["Tags"], extraTags]
+          |>]
+        ]          
+      ], array ] ]
+    ]
+  ] 
+] ]
+
+
+materialParameters[list: List[__TransmissionObject], destCl_, srcCl_, metaCl_, {itemSize_, groupSize_}, "Slab", "CPU", opts: OptionsPattern[] ] := Module[{
+  array = list
+}, With[{
+
+ NKCycles = If[OptionValue["SolveNKEquations"], OptionValue["NKCycles"], 0], 
+ FabryPerotCycles = If[OptionValue["FabryPerotCancellation"] === True, 
+   OptionValue["FabryPerotCycles"],
+   0
+ ],
+
+ MovingAverageFilter = If[MatchQ[OptionValue["MovingAverageFilter"], _Integer], 
+  OptionValue["MovingAverageFilter"],
+  If[OptionValue["MovingAverageFilter"], 1, 0]
+ ]
+},
+
+
+  ll`run[destCl, srcCl, metaCl, itemSize, groupSize, NKCycles, MovingAverageFilter,  FabryPerotCycles, groupSize 256];
+
+
+
+  With[{
+    dest = destCl,
+    extraTags = OptionValue["Tags"],
+    partition = itemSize
+  }, Hold[
+    With[{
+      memory = (Transpose[ Partition[#, 5] ] &/@ Partition[ll`get[destCl], 5 partition])
+    },
+    
       MapIndexed[Function[{item, itemSection}, With[{
         itemNumber = itemSection[[1]],
         dt = QuantityMagnitude[item[[1, "\[Delta]t"]], "Picoseconds"] // N,
