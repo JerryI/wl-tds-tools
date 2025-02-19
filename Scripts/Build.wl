@@ -11,9 +11,11 @@ If[Length[CCompilers[]] === 0,
  "CompilerInstallation"->"/usr/bin",
  "CompilerName"->"gcc",
  "ShellOutputFunction"->Print}
+,
+$CCompiler = Last[CCompilers[]];
 ];
 
-$CCompiler = Last[CCompilers[]];
+
 
 
 
