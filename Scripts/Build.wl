@@ -6,15 +6,6 @@ Get["LibraryLink`"];
 Echo[$CCompiler];
 Echo[CCompilers[]];
 
-If[Length[CCompilers[]] === 0, 
-    $CCompiler={"Compiler"->GenericCCompiler,
- "CompilerInstallation"->"/usr/bin",
- "CompilerName"->"gcc",
- "ShellOutputFunction"->Print}
-,
-$CCompiler = Last[CCompilers[]];
-];
-
 
 
 
@@ -64,6 +55,9 @@ Block[{$directory, $libSrc, $libDir, $linkerOptions},
         "TargetDirectory" -> $libDir, 
         "Debug" -> True, 
         "ShellOutputFunction"->Print,
+        "Compiler"->GenericCCompiler,
+        "CompilerInstallation"->"/usr/bin",
+        "CompilerName"->"gcc",
         opts
     ]
 ]; 
