@@ -26,3 +26,8 @@ jobs:
       env:
         WOLFRAM_ID: ${{ secrets.WolframID }}
         WOLFRAM_PASS: ${{ secrets.WolframPW }}
+
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+
+
