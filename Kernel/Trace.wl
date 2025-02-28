@@ -20,6 +20,56 @@ tdValid[td: List[__List], OptionsPattern[]] := With[{
   ]
 ]
 
+freqCut[test_] := 0.2008 (test[[{1,-1},1]]//Differences)/Length[test];
+slowRate[x_] := Clip @ If[x > 0.8,  With[{s = Exp[-3(x-0.8)]},  s x + (1-s) Tanh[ x]], x]
+transition[x_, y1_, y2_, y3_] := With[{j = If[x > 1.0, Exp[-3.0(x-1.0)], 1.0]}, With[{s = If[x <= 0.8, 1.0, Exp[-8.0(x-0.8)]]}, (1-s) y2 + s y1] j + y3 (1.0-j)];
+
+
+pad["BaselineDecay", n_, test_List] := With[{int = Interpolation[test, InterpolationOrder->1], base = Interpolation[Transpose[{test[[All,1]], LowpassFilter[test[[All,2]], freqCut[test]]}], InterpolationOrder->1]},
+  With[{min = test[[1,1]], max = test[[-1,1]], step = Abs[Min[Differences[test[[All,1]] ] ] ]},
+    Table[{i, transition[
+      (i-min)/(max - min),
+      int[min + (max - min) slowRate[(i-min)/(max - min)]],
+      base[min + (max - min) slowRate[(i-min)/(max - min)]],
+      test[[1,2]]
+    ]
+      
+    }, {i, min, max + n(max-min), step}]
+  ]
+]
+
+pad["ZerosDecay", n_, test_List] := With[{int = Interpolation[test, InterpolationOrder->1], base = Interpolation[Transpose[{test[[All,1]], LowpassFilter[test[[All,2]], freqCut[test]]}], InterpolationOrder->1]},
+  With[{min = test[[1,1]], max = test[[-1,1]], step = Abs[Min[Differences[test[[All,1]] ] ] ]},
+    Table[{i, With[{x = (i-min)/(max - min)},
+      If[x > 0.8, 
+        If[i <= max, int[i], int[max]] Exp[-50.0(x - 0.8)^2] 
+      , 
+        int[i]
+      ]
+    ]
+      
+    }, {i, min, max + n(max-min), step}]
+  ]
+]
+
+pad["Zeros", n_, test_List] := With[{int = Interpolation[test, InterpolationOrder->1], base = Interpolation[Transpose[{test[[All,1]], LowpassFilter[test[[All,2]], freqCut[test]]}], InterpolationOrder->1]},
+  With[{min = test[[1,1]], max = test[[-1,1]], step = Abs[Min[Differences[test[[All,1]] ] ] ]},
+    Table[{i, If[i < max,
+      int[i]
+    ,
+      0
+    ]
+      
+    }, {i, min, max + n(max-min), step}]
+  ]
+]
+
+pad[test_List, None] := test;
+pad[test_List, n_Integer] := pad["BaselineDecay", n, test]
+pad[test_List, {name_String, n_Integer}] := pad[name, n, test]
+pad[test_List, _] := test
+
+
 ClearAll[TDTrace]
 
 tdValid[_, OptionsPattern[]] := False
@@ -30,9 +80,10 @@ TDTrace::unknownprop = "Unknown property `1`";
 TDTrace[td_TDTrace, opts: OptionsPattern[]] := With[{
   units = QuantityMagnitude[OptionValue["Units"], "Picoseconds"],
   amp   = OptionValue["Gain"],
-  offset = QuantityMagnitude[OptionValue["Offset"], "Picoseconds"]
+  offset = QuantityMagnitude[OptionValue["Offset"], "Picoseconds"],
+  padding = OptionValue["PadZeros"]
 },
-  TDTrace[NumericArray[{#[[1]] units + offset, #[[2]] amp} &/@ Normal[td[[1]]]]]
+  TDTrace[NumericArray[{#[[1]] units + offset, #[[2]] amp} &/@ pad[Normal[td[[1]]], padding] ] ]
 ]
 
 TDTrace /: MakeBoxes[obj: TDTrace[n_NumericArray], StandardForm] := With[{
@@ -77,17 +128,18 @@ TDTrace[n_NumericArray]["Properties"] := {"Properties", "Spectrum", "PowerSpectr
 
 TDTrace[q_QuantityArray, opts: OptionsPattern[]] := TDTrace[QuantityMagnitude[q, {"Picoseconds", 1}], opts]
 
-TDTrace[td: List[__List], opts: OptionsPattern[]] := With[{
+TDTrace[td: List[__List], opts: OptionsPattern[] ] := With[{
   units = QuantityMagnitude[OptionValue["Units"], "Picoseconds"],
   amp   = OptionValue["Gain"],
-  offset = QuantityMagnitude[OptionValue["Offset"], "Picoseconds"]
+  offset = QuantityMagnitude[OptionValue["Offset"], "Picoseconds"],
+  padding = OptionValue["PadZeros"]
 },
 
-  TDTrace[NumericArray[{#[[1]] units + offset, #[[2]] amp} &/@ td]]
+  TDTrace[NumericArray[{#[[1]] units + offset, #[[2]] amp} &/@ pad[td, padding] ] ]
   
 ] /; tdValid[td, opts]
 
-Options[TDTrace] = {"Units"->Quantity[1, "Picoseconds"], "Gain"->1.0, "Offset"->Quantity[0, "Picoseconds"]};
+Options[TDTrace] = {"Units"->Quantity[1, "Picoseconds"], "PadZeros"->None, "Gain"->1.0, "Offset"->Quantity[0, "Picoseconds"]};
 
 Options[tdValid] = Options[TDTrace];
 

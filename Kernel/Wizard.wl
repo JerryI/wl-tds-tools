@@ -2,16 +2,15 @@ BeginPackage["JerryI`TDSTools`Wizard`", {
   "JerryI`TDSTools`Trace`",
   "JerryI`TDSTools`Transmission`",
   "JerryI`TDSTools`Material`",
-
-  "Notebook`Kernel`Inputs`",
   "JerryI`Misc`Events`",
   "JerryI`Misc`Events`Promise`",
   "JerryI`Misc`Language`",
   "JerryI`Misc`Async`",
   "JerryI`Misc`WLJS`Transport`",
-  "Notebook`Editor`Boxes`",
-  "Notebook`EditorUtils`",
-  "Notebook`Editor`Kernel`FrontSubmitService`"
+  "CoffeeLiqueur`Extensions`InputsOutputs`",
+  "CoffeeLiqueur`Extensions`EditorView`",
+  "CoffeeLiqueur`Extensions`Notifications`",
+  "CoffeeLiqueur`Extensions`Communication`"
 }]
 
 TDSWizard::usage = "TDSWizard"
@@ -19,10 +18,8 @@ TDSPalette::usage = "TDSPalette opens a palette"
 
 Begin["`Private`"]
 
-toStringHeld[expr_] := StringDrop[StringDrop[ToString[Hold[expr], InputForm], 5],-1]
-SetAttributes[toStringHeld, HoldFirst];
 
-TDSPalette := With[{cell = CellPrint[toStringHeld @ With[{parent = CurrentWindow["Origin"]},
+TDSPalette := With[{cell = CellPrint[Identity @ With[{parent = CurrentWindow["Origin"]},
   {
     {
       EventHandler[InputButton["TDTrace"], Function[Null,
