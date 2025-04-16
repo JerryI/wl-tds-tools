@@ -15,7 +15,7 @@ A small library for high-precision material parameter extraction from time-domai
 - High precision / various approximation methods for $n$, $\kappa$, and $\alpha$ solving
 - GUI Helpers (available only on WLJS Notebook platform) 🌟
 - Works for both thin and thick samples
-- **GPU Acceleration** (OpenCL) ⭐️
+- **GPU Acceleration** (OpenCL, if not available it fallbacks on C version) ⭐️ 
 - Kramers-Kronig approximation of $n$ feature (if needed)
 - Functional approach, no hidden state
 - Syntax sugar with data preview ⭐️
@@ -85,28 +85,6 @@ We separate the toolbox into 3 contexts:
 - `` JerryI`TDSTools`Material` `` : extracts material parameters from transmission objects.
 - `` JerryI`TDSTools`Wizard` `` : sets of helper widgets.
 
-#### Notes on GPU Acceleration
-Test were performed on Mac Air M1 (2021), where 4 cores are used for CPU calculations
-
-- single spectrum wall-time
-```
-GPU: 0.01 sec
-CPU: 0.46 sec
-```
-
-- 286 spectra wall-time
-```
-GPU: 6.05 sec
-CPU: 148.3 sec
-```
-
-- 1071 spectra wall-time
-```
-GPU: 22.1 sec
-CPU: 550.3 sec
-```
-
-The peformance can still be improved by moving more calculations on GPU side. It is in TODO list. 
 
 ### Time-traces ⤵️
 To construct a time-trace object from a table, use:
@@ -204,6 +182,16 @@ new = Append[tr, {"Thickness"->Quantity[1.2, "Millimeters"], "Gain"->0.9}]
 ```
 
 It returns a new object, while the raw data is shared between them internally.
+
+#### Math operations
+You can substract, add, multiply by any complex numbers `TransmissionObject` even if they have different length or sampling
+
+```mathematica
+tr // Snippet
+tr + 0.5 I tr // Snippet
+```
+
+The data will be automatically resampled and a new object created.
 
 #### Phase unwrapping 
 A key challenge in digital signal processing is managing the phase of the signal. To address this, phase unwrapping is employed, which transforms a discontinuous phase signal into a continuous one

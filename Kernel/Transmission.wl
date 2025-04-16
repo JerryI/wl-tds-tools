@@ -60,7 +60,79 @@ TransmissionObject::thickerr = "Thickness `1` is not valid";
 
 (* :: Constructor :: *)
 
-TransmissionObject[sam_TDTrace, ref_TDTrace, opts: OptionsPattern[]] := Module[{}, With[{
+(* [TODO] Store Transmission as InterpolationFunction instead! *)
+
+TransmissionObject /: Times[a_TransmissionObject, B_?NumberQ] := With[{
+  TA = a[[1, "T"]]  // Normal,
+  PhaseA = a[[1, "Phase"]]  // Normal
+},
+
+  Append[a, <|
+          "T"->NumericArray[ TA Abs[B] ],
+          "Phase"->NumericArray[ PhaseA + Arg[B] ]
+  |>]
+
+]
+
+resampleSeries[{x_,y_}, {min_, max_, step_}] := With[{
+  int = Interpolation[{x,y} // Transpose, InterpolationOrder->1]
+},
+  Table[{i, int[i]}, {i, min, max, step}]
+]
+
+TransmissionObject /: Plus[a_TransmissionObject, b_TransmissionObject] := With[{
+  phaseShiftA = a[[1, "PhaseShift"]],
+  sizeA = a[[1, "Size"]],
+  nA = a[[1, "n0"]],
+  gainA = a[[1, "Gain"]],
+  TA = a[[1, "T"]] // Normal,
+  PhaseA = a[[1, "Phase"]] // Normal,
+  FreqsA = a[[1, "Frequencies"]] // Normal,
+  delta = QuantityMagnitude[a[[1, "\[Delta]t"]], "Picoseconds"],
+
+  phaseShiftB = b[[1, "PhaseShift"]],
+  sizeB = b[[1, "Size"]],
+  nB = b[[1, "n0"]],
+  gainB = b[[1, "Gain"]],
+  TB = b[[1, "T"]] // Normal,
+  PhaseB = b[[1, "Phase"]] // Normal,
+  FreqsB = b[[1, "Frequencies"]] // Normal
+},
+
+  (* resample and apply gain / phase shifts *)
+  With[{
+    step = Min[Differences[FreqsA]//Abs//Min, Differences[FreqsA]//Abs//Min],
+    min = Min[FreqsA//Min, FreqsB//Min],
+    max = Max[FreqsA//Max, FreqsB//Max]
+  },
+    With[{
+      resampledTA = {#[[1]], #[[2]] gainA} &/@ resampleSeries[{FreqsA, TA}, {min, max, step}],
+      resampledTB = {#[[1]], #[[2]] gainB} &/@ resampleSeries[{FreqsB, TB}, {min, max, step}],
+      resampledPA = {#[[1]], #[[2]] + 2Pi phaseShiftA} &/@ resampleSeries[{FreqsA, PhaseA}, {min, max, step}],
+      resampledPB = {#[[1]], #[[2]] + 2Pi phaseShiftB} &/@ resampleSeries[{FreqsB, PhaseB}, {min, max, step}]
+
+      
+    },
+      With[{
+        result =  resampledTA[[All,2]] Exp[I resampledPA[[All,2]] ] +  resampledTB[[All,2]] Exp[I resampledPB[[All,2]] ],
+        pDiff = 2 Pi (1/33.356) resampledTA[[All,1]] delta
+      
+      },
+        Append[a, <|
+          "T"->NumericArray[Abs[result] ],
+          "Frequencies" -> NumericArray[resampledTA[[All,1]]],
+          "Gain" -> 1,
+          "PhaseShift"->0,
+          "Size" -> Length[resampledTA],
+          "Phase"->NumericArray[ Arg[result Exp[- I pDiff] ] + pDiff ]
+        |>]
+      ]
+    ]
+  ]
+
+]
+
+TransmissionObject[sam_TDTrace, ref_TDTrace, opts: OptionsPattern[] ] := Module[{}, With[{
   thickness = QuantityMagnitude[OptionValue["Thickness"], "Centimeters"],
   gain = OptionValue["Gain"]
 },
@@ -104,7 +176,7 @@ TransmissionObject[sam_TDTrace, ref_TDTrace, opts: OptionsPattern[]] := Module[{
       ]
     ]
   ]
-]]
+] ]
 
 (* by Thies Heidecke see https://mathematica.stackexchange.com/questions/341/implementing-discrete-and-continuous-hilbert-transforms *)
 HilbertSpectrum[0] := {};
