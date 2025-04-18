@@ -7,7 +7,7 @@ PacletObject[
     "Creator" -> "Kirill Vasin",
     "License" -> "MIT",
     "PublisherID" -> "JerryI",
-    "Version" -> "0.1.3",
+    "Version" -> "0.1.4",
     "WolframVersion" -> "13+",
     "PrimaryContext" -> "JerryI`TDSTools`",
     "Extensions" -> {

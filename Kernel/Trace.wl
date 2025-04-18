@@ -126,7 +126,17 @@ TDTrace[n_NumericArray]["PowerSpectrum"] := QuantityArray[{#[[1]], Abs[#[[2]]]^2
 
 TDTrace[n_NumericArray]["Properties"] := {"Properties", "Spectrum", "PowerSpectrum", "Trace", "FrequencyDomainConfidenceInterval", "FDCI"}
 
-TDTrace[q_QuantityArray, opts: OptionsPattern[]] := TDTrace[QuantityMagnitude[q, {"Picoseconds", 1}], opts]
+TDTrace[q_QuantityArray, opts: OptionsPattern[] ] := If[CompatibleUnitQ[q[[1,1]], 1/"Centimeters"],
+  TDTrace[
+    inverseFourier2d[ QuantityMagnitude[q, {1/"Centimeters", 1}] ]
+  , opts]
+,
+  If[CompatibleUnitQ[q[[1,1]], "Picoseconds"],
+    TDTrace[QuantityMagnitude[q, {"Picoseconds", 1}], opts]
+  ,
+    $Failed
+  ]
+]
 
 TDTrace[td: List[__List], opts: OptionsPattern[] ] := With[{
   units = QuantityMagnitude[OptionValue["Units"], "Picoseconds"],

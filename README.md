@@ -96,7 +96,7 @@ TDTrace[q_QuantityArray] _TDTrace
 
 ![](./imgs/trace.png)
 
-This accepts a `QuantityArray`. The units for the time-step must be provided. For example
+This accepts a `QuantityArray`. The units for the time-step or frequency-step must be provided. For example
 
 ```mathematica
 tds = {
@@ -106,6 +106,12 @@ tds = {
 };
 
 tds = TDTrace[QuantityArray[tds, {"Picoseconds", 1}]]
+```
+
+Of you have already a fourier transformed data, supply it in the units of wavenumber. For example, taking the output of `tds` one can recreate an original time-trace from the spectrum
+
+```mathematica
+TDTrace[tds["Spectrum"]]
 ```
 
 #### Properties
