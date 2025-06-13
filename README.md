@@ -24,7 +24,7 @@ A small library for high-precision material parameter extraction from time-domai
 
 
 ## See it in action! ⏱️
-[An online example](https://jerryi.github.io/wl-tds-tools/Examples/Basic.html) on how to work with it.
+[An online example](https://jerryi.github.io/wl-tds-tools/Basic.html) on how to work with it.
 
 
 ## Time-Domain Wizard 🧙🏼‍♂️
