@@ -26,6 +26,9 @@ A small library for high-precision material parameter extraction from time-domai
 ## See it in action! ⏱️
 [An online example](https://jerryi.github.io/wl-tds-tools/Basic.html) on how to work with it.
 
+## Applications
+- [TeraKitchen: A WLJS Application for Automated TDS-THz Spectroscopy Analysis](https://github.com/JerryI/TK)
+
 
 ## Time-Domain Wizard 🧙🏼‍♂️
 A set of widgets, which can help you to cure phase unwrapping and material parameters extraction in batch
