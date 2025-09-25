@@ -37,7 +37,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload only the content from the /Examples folder
-          path: 'Examples'
+          path: './Examples'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
