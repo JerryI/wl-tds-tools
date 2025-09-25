@@ -30,21 +30,6 @@ A small library for high-precision material parameter extraction from time-domai
 - [TeraKitchen: A WLJS Application for Automated TDS-THz Spectroscopy Analysis](https://github.com/JerryI/TK)
 
 
-## Time-Domain Wizard 🧙🏼‍♂️
-A set of widgets, which can help you to cure phase unwrapping and material parameters extraction in batch
-
-*available only for WLJS Notebook platform*
-
-### Phase cure
-
-![](./imgs/phasecure.gif)
-
-### Material parameters
-
-![](./imgs/matcure.gif)
-
-See the [full video here](./imgs/wizard.mov) 🎥
-
 ## Examples of processed TDS
 
 GaGe 0.4mm semiconductor
