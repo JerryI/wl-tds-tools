@@ -9,7 +9,6 @@ PacletObject[
     "PublisherID" -> "JerryI",
     "Version" -> "0.1.5",
     "WolframVersion" -> "13+",
-    "PrimaryContext" -> "JerryI`TDSTools`",
     "Extensions" -> {
       {
         "Kernel",
