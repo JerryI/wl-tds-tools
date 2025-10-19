@@ -53,7 +53,7 @@ Fe2Mo3O8 0.4mm dielectric
 Install locally using [LPM](https://github.com/JerryI/wl-localpackages)
 
 ```mathematica
-PacletRepositories[{
+LPMRepositories[{
     Github -> "https://github.com/JerryI/wl-tds-tools" -> "master"
 }]
 ```
