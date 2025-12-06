@@ -116,7 +116,13 @@ TDTrace[n_NumericArray]["FrequencyDomainConfidenceInterval"] := Module[{ model, 
   With[{d = QuantityMagnitude[TDTrace[n]["PowerSpectrum"], {1/"Centimeters", 1}]}, 
     model = NonlinearModelFit[Drop[d,10], A Exp[-(*FB[*)(((*SpB[*)Power[(x0 - x)(*|*),(*|*)2](*]SpB*))(*,*)/(*,*)((*SpB[*)Power[\[Sigma](*|*),(*|*)2](*]SpB*)))(*]FB*)], {\[Sigma], A, x0}, x, ConfidenceLevel->0.5, Method->"NMinimize"];
     model = Association[model["BestFitParameters"]];
-    Quantity[#, 1/"Centimeters"] &/@ {Clip[model[x0] - Abs[model[\[Sigma]]], {5.0, Infinity}], 1.2 Clip[model[x0] + Abs[model[\[Sigma]]], {30.0, Infinity}]}
+    With[{candidates = {Clip[model[x0] - Abs[model[\[Sigma]]], {5.0, Infinity}], 1.2 Clip[model[x0] + Abs[model[\[Sigma]]], {30.0, Infinity}]}},
+      If[Abs[candidates[[1]] - candidates[[2]]] < 15 || Abs[candidates[[1]]] > 300.0 || Abs[candidates[[2]]] > 300.0 || Abs[candidates[[2]]] < 10 || Abs[candidates[[1]]] < 10,
+        Quantity[#, 1/"Centimeters"] &/@ ({1.0, 0.5} MinMax[d[[All, 1]]])
+      ,
+        Quantity[#, 1/"Centimeters"] &/@ candidates
+      ]
+    ]
   ]
 ]
 
