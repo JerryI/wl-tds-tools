@@ -38,6 +38,10 @@ MaterialParameters[n_Association][s_String] := If[!KeyExistsQ[n, s],
 
 MaterialParameters /: Keys[t_MaterialParameters] :=  t["Properties"]
 
+MaterialParameters /: Append[MaterialParameters[a_Association], props_Association] := MaterialParameters[Join[a, props]  ]
+MaterialParameters /: Append[MaterialParameters[a_Association], prop_Rule] := MaterialParameters[Append[a, prop]  ]
+MaterialParameters /: Append[MaterialParameters[a_Association], props_List] := MaterialParameters[Append[a, props]  ]
+
 
 MaterialParameters[n_Association]["Properties"] := {"Domain", "Best Transmission", "Transmission", "Raw \[Alpha]", "Best Raw \[Alpha]", "\[Alpha]", "Best \[Alpha]", "Frequencies", "Best n", "n", "Best Raw k", "Raw k", "Best k", "k", "Properties", "Thickness", "Tags", "Gain", "PhaseShift", "Phase", "FrequencyDomainConfidenceInterval", "FDCI", "FDCI2", "FrequencyDomainConfidenceInterval2", "FPReduction"}
 
