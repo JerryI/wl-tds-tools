@@ -333,10 +333,14 @@ TransmissionObject[a_Association]["Approximated k"] := With[{
 
 TransmissionObject[a_Association]["Approximated \[Alpha]"] := With[{
   thickness = QuantityMagnitude[a["Thickness"], "Centimeters"],
-  gain = a["Gain"]
+  gain = a["Gain"],
+  n0 = Clip[a["n0"], {0, Infinity}]
+},
+{
+  freshnel = (1/thickness) Log[16 n0 n0 / ((n0 + 1)^4)]
 },
   QuantityArray[
-    Join[{{0, 0}}, {#[[1]], ((- 0.159152 Log[#[[2]] gain ] / (#[[1]] thickness)) 4 \[Pi]  10^12 #[[1]])/(33.356 2.9979 10^10)} &/@ Drop[Transpose[Normal /@ {a["Frequencies"], a["T"]}], 1] ]
+    Join[{{0, 0}}, {#[[1]], freshnel + ((- 0.159152 Log[#[[2]] gain ] / (#[[1]] thickness)) 4 \[Pi]  10^12 #[[1]])/(33.356 2.9979 10^10)} &/@ Drop[Transpose[Normal /@ {a["Frequencies"], a["T"]}], 1] ]
   , {1/"Centimeters", 1/"Centimeters"}]
 ]
 
