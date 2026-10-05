@@ -456,17 +456,16 @@ materialParameters[list: List[__TransmissionObject], destCl_, srcCl_, metaCl_, {
   ] 
 ] ]
 
-findFDCIRanges[mFp_MaterialParameters] := 
-  With[{
-    m = QuantityMagnitude[mFp["Frequencies"], 1/"Centimeters"] ,
-    left = QuantityMagnitude[mFp["FDCI"][[1]], 1/"Centimeters"],
-    right = QuantityMagnitude[mFp["FDCI"][[2]], 1/"Centimeters"]
-  }, 
-    {
-      FirstPosition[m, x_ /; (x > left)] // First,
-      Length[m] - FirstPosition[m // Reverse, x_ /; (x < right)] // First
-    }
-  ];
+findFDCIRanges[mFp_MaterialParameters] := With[{
+  frequencies = QuantityMagnitude[mFp["Frequencies"], 1/"Centimeters"],
+  interval = QuantityMagnitude[#, 1/"Centimeters"] & /@ mFp["FDCI"]
+},
+  With[{indices = Select[Range[Length[frequencies]],
+      interval[[1]] <= frequencies[[#]] <= interval[[2]] &]},
+    If[Length[indices] >= 2, {First[indices], Last[indices]},
+      {1, Max[2, Ceiling[Length[frequencies]/2]]}]
+  ]
+];
 
 
 

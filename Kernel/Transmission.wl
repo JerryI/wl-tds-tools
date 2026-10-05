@@ -101,7 +101,7 @@ TransmissionObject /: Plus[a_TransmissionObject, b_TransmissionObject] := With[{
 
   (* resample and apply gain / phase shifts *)
   With[{
-    step = Min[Differences[FreqsA]//Abs//Min, Differences[FreqsA]//Abs//Min],
+    step = Min[Differences[FreqsA]//Abs//Min, Differences[FreqsB]//Abs//Min],
     min = Min[FreqsA//Min, FreqsB//Min],
     max = Max[FreqsA//Max, FreqsB//Max]
   },
@@ -136,7 +136,7 @@ TransmissionObject[sam_TDTrace, ref_TDTrace, opts: OptionsPattern[] ] := Module[
   thickness = QuantityMagnitude[OptionValue["Thickness"], "Centimeters"],
   gain = OptionValue["Gain"]
 },
-  If[!NumericQ[thickness], Message[TransmissionObject::thickerr, OptionValue["Thickness"]]; Return[$Failed]];
+  If[!TrueQ[NumericQ[thickness] && thickness > 0], Message[TransmissionObject::thickerr, OptionValue["Thickness"]]; Return[$Failed]];
 
   With[{
     minStep = Min @ ((Min @ Differences @ (QuantityMagnitude[#["Trace"], {"Picoseconds", 1}][[All,1]])) &/@ {sam, ref}),

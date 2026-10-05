@@ -13,7 +13,6 @@ A small library for high-precision material parameter extraction from time-domai
 - Fabry-Pérot deconvolution ⭐️
 - Informed Automatic / semi-automatic phase unwrapping
 - High precision / various approximation methods for $n$, $\kappa$, and $\alpha$ solving
-- GUI Helpers (available only on WLJS Notebook platform) 🌟
 - Works for both thin and thick samples
 - **GPU Acceleration** (OpenCL, if not available it fallbacks on C version) ⭐️ 
 - Kramers-Kronig approximation of $n$ feature (if needed)
@@ -71,8 +70,6 @@ We separate the toolbox into 3 contexts:
 - ``JerryI`TDSTools`Trace` `` : operates with raw time-traces.
 - `` JerryI`TDSTools`Transmission` `` : constructs transmission objects from sample and reference time-traces.
 - `` JerryI`TDSTools`Material` `` : extracts material parameters from transmission objects.
-- `` JerryI`TDSTools`Wizard` `` : sets of helper widgets.
-
 
 ### Time-traces ⤵️
 To construct a time-trace object from a table, use:

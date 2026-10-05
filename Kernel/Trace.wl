@@ -9,14 +9,13 @@ Begin["`Private`"]
 tdValid[td: List[__List], OptionsPattern[]] := With[{
   q = QuantityMagnitude[OptionValue["Units"]]
 },
-  If[ListQ[td] && ListQ[td // First] && NumericQ[q],
-    With[{a = ((Transpose[td] {q, 1}))},
-      AllTrue[NumericQ][a[[1]]] && AllTrue[NumericQ][a[[2]]]
-    ]
-  ,
+  If[!NumericQ[q] || Length[td] < 4 ||
+      !AllTrue[td, MatchQ[#, {_?NumericQ, _?NumericQ}] &] ||
+      !AllTrue[Differences[td[[All, 1]]], # > 0 &],
     Message[TDTrace::input];
-    
     False
+  ,
+    True
   ]
 ]
 
@@ -74,7 +73,7 @@ ClearAll[TDTrace]
 
 tdValid[_, OptionsPattern[]] := False
 
-TDTrace::input = "Input data must be a QuantityArray or List[List[]..]";
+TDTrace::input = "Input data must contain at least four numeric {time, signal} rows with strictly increasing time.";
 TDTrace::unknownprop = "Unknown property `1`";
 
 TDTrace[td_TDTrace, opts: OptionsPattern[]] := With[{
@@ -112,18 +111,32 @@ TDTrace[n_NumericArray]["Trace"]    := QuantityArray[n // Normal, {"Picoseconds"
 TDTrace[n_NumericArray]["Spectrum"] := QuantityArray[fourier2d[ QuantityMagnitude[TDTrace[n]["Trace"], {"Picoseconds", 1} ] ], {1/"Centimeters", 1}]
 
 
-TDTrace[n_NumericArray]["FrequencyDomainConfidenceInterval"] := Module[{ model, x0, \[Sigma], A},
-  With[{d = QuantityMagnitude[TDTrace[n]["PowerSpectrum"], {1/"Centimeters", 1}]}, 
-    model = NonlinearModelFit[Drop[d,10], A Exp[-(*FB[*)(((*SpB[*)Power[(x0 - x)(*|*),(*|*)2](*]SpB*))(*,*)/(*,*)((*SpB[*)Power[\[Sigma](*|*),(*|*)2](*]SpB*)))(*]FB*)], {\[Sigma], A, x0}, x, ConfidenceLevel->0.5, Method->"NMinimize"];
-    model = Association[model["BestFitParameters"]];
-    With[{candidates = {Clip[model[x0] - Abs[model[\[Sigma]]], {5.0, Infinity}], 1.2 Clip[model[x0] + Abs[model[\[Sigma]]], {30.0, Infinity}]}},
-      If[Abs[candidates[[1]] - candidates[[2]]] < 15 || Abs[candidates[[1]]] > 300.0 || Abs[candidates[[2]]] > 300.0 || Abs[candidates[[2]]] < 10 || Abs[candidates[[1]]] < 10,
-        Quantity[#, 1/"Centimeters"] &/@ ({1.0, 0.5} MinMax[d[[All, 1]]])
-      ,
-        Quantity[#, 1/"Centimeters"] &/@ candidates
-      ]
-    ]
-  ]
+TDTrace[n_NumericArray]["FrequencyDomainConfidenceInterval"] := Module[
+  {d, frequencies, fallback, fit, parameters, candidates, selected, x0, \[Sigma], A},
+  d = QuantityMagnitude[TDTrace[n]["PowerSpectrum"], {1/"Centimeters", 1}];
+  frequencies = d[[All, 1]];
+  fallback = frequencies[[{1, Max[2, Ceiling[Length[frequencies]/2]]}]];
+
+  fit = Quiet[Check[
+    NonlinearModelFit[Drop[d, 10], A Exp[-(x0 - x)^2/\[Sigma]^2],
+      {\[Sigma], A, x0}, x, ConfidenceLevel -> 0.5, Method -> "NMinimize"],
+    $Failed
+  ]];
+  parameters = If[fit === $Failed, <||>, Quiet[Check[Association[fit["BestFitParameters"]], <||>]]];
+  candidates = If[AllTrue[{x0, \[Sigma]}, KeyExistsQ[parameters, #] &],
+    {Clip[parameters[x0] - Abs[parameters[\[Sigma]]], {5.0, Infinity}],
+      1.2 Clip[parameters[x0] + Abs[parameters[\[Sigma]]], {30.0, Infinity}]},
+    {}
+  ];
+  selected = If[Length[candidates] == 2 &&
+      AllTrue[candidates, NumberQ[#] && TrueQ[Im[#] == 0] &] &&
+      10 <= candidates[[1]] < candidates[[2]] <= 300 &&
+      candidates[[2]] - candidates[[1]] >= 15,
+    Select[frequencies, candidates[[1]] <= # <= candidates[[2]] &],
+    {}
+  ];
+
+  Quantity[#, 1/"Centimeters"] & /@ If[Length[selected] >= 2, candidates, fallback]
 ]
 
 TDTrace[n_NumericArray]["FDCI"] := TDTrace[n]["FrequencyDomainConfidenceInterval"]
@@ -144,16 +157,17 @@ TDTrace[q_QuantityArray, opts: OptionsPattern[] ] := If[CompatibleUnitQ[q[[1,1]]
   ]
 ]
 
-TDTrace[td: List[__List], opts: OptionsPattern[] ] := With[{
-  units = QuantityMagnitude[OptionValue["Units"], "Picoseconds"],
-  amp   = OptionValue["Gain"],
-  offset = QuantityMagnitude[OptionValue["Offset"], "Picoseconds"],
-  padding = OptionValue["PadZeros"]
-},
-
-  TDTrace[NumericArray[{#[[1]] units + offset, #[[2]] amp} &/@ pad[td, padding] ] ]
-  
-] /; tdValid[td, opts]
+TDTrace[td: List[__List], opts: OptionsPattern[] ] := If[tdValid[td, opts],
+  With[{
+    units = QuantityMagnitude[OptionValue["Units"], "Picoseconds"],
+    amp = OptionValue["Gain"],
+    offset = QuantityMagnitude[OptionValue["Offset"], "Picoseconds"],
+    padding = OptionValue["PadZeros"]
+  },
+    TDTrace[NumericArray[{#[[1]] units + offset, #[[2]] amp} & /@ pad[td, padding]]]
+  ],
+  $Failed
+]
 
 Options[TDTrace] = {"Units"->Quantity[1, "Picoseconds"], "PadZeros"->None, "Gain"->1.0, "Offset"->Quantity[0, "Picoseconds"]};
 
