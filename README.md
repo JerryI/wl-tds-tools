@@ -1,9 +1,10 @@
-# Time-Domain Spectroscopy Tools 🧰
-A small library for high-precision material parameter extraction from time-domain THz signals, written in Wolfram Language 🐺 and OpenCL 🏎️
+# Time-Domain Spectroscopy Tools
 
-*Developed at University of Augsburg, Germany 🇩🇪*
+⚠️ **This library is no-longer maintained**
 
-<h4>Beta testing ♲</h4> 
+⚠️ **Please consider to use [THzTDSTools](https://github.com/JerryI/THzTDSTools) instead**
+
+
 
 > <h4>Processed <span style="color:white; background:teal; border-radius:8px; padding:0 0.5rem 0 0.5rem;">3411</span> THz spectra from 2021 to 2024</h4>
 
